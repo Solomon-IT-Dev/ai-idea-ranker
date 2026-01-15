@@ -1,0 +1,39 @@
+{
+  "name": "ai-idea-ranker",
+  "description": "AI Idea Ranker is a lightweight app that helps you capture product ideas, enrich them with AI-generated insights, and rank them by impact, effort, and overall priority. It provides a clear, structured way to compare options and decide what to build next.",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -C apps/server dev",
+    "dev:server": "pnpm -C apps/server dev",
+    "dev:client": "pnpm -C apps/server dev",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write"
+  },
+  "keywords": [
+    "ai",
+    "idea",
+    "ranker",
+    "productivity",
+    "product-ideas",
+    "prioritization"
+  ],
+  "author": "Solomon-IT-Dev",
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.9",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "prettier": "^3.8.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.0"
+  }
+}
