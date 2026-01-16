@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
-import { logger } from './lib/logger.lib.js'
-import { createApp } from './app.js'
+import { createApp } from './src/app.js'
+import { logger } from './src/lib/logger.lib.js'
 
 import type { Server } from 'node:http'
 

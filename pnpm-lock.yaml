@@ -72,6 +72,9 @@ importers:
         specifier: ^4.3.5
         version: 4.3.5
     devDependencies:
+      '@express-rate-limit/tsconfig':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@types/compression':
         specifier: ^1.8.1
         version: 1.8.1
@@ -280,6 +283,9 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@express-rate-limit/tsconfig@1.0.2':
+    resolution: {integrity: sha512-BMSuJSe5fITRUZRLModNIXOTjVP4TcqOXO7ohW5OwtHNNGJ48HvaKH6zuqP8CjEEcbUmjheXk9rSYUF3tDu0tA==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -1666,6 +1672,8 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@express-rate-limit/tsconfig@1.0.2': {}
 
   '@humanfs/core@0.19.1': {}
 

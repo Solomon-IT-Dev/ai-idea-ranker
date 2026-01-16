@@ -5,5 +5,5 @@
     "typeRoots": ["../../node_modules/@types", "./node_modules/@types"],
     "baseUrl": "."
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "index.ts"]
 }

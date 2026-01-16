@@ -3,7 +3,7 @@
   "description": "Server package for AI Idea Ranker application.",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch index.ts"
   },
   "keywords": [
     "server",
@@ -26,6 +26,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.2",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
