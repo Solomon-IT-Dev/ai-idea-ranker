@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
+import { authRouter } from '../modules/auth/auth.routes.js'
+
 export const v1Router = Router()
 
-// TODO: mount module routers here, e.g.
-// v1Router.use('/projects', projectsRouter)
+v1Router.use('/auth', authRouter)
