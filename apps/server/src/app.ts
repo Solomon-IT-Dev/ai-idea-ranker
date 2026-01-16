@@ -9,7 +9,9 @@ import { envConfig } from './config/env.config.js'
 import { securityConstants } from './constants/security.constants.js'
 import { AppError } from './lib/appError.lib.js'
 import { loggerHttp } from './lib/logger.lib.js'
-import { errorHandler } from './middlewares/errorHandler.middleware.js'
+import { errorHandlerMiddleware } from './middlewares/errorHandler.middleware.js'
+import { requestIdMiddleware } from './middlewares/requestId.middleware.js'
+import { v1Router } from './routes/v1.router.js'
 
 export function createApp() {
   // Start express app
@@ -46,6 +48,9 @@ export function createApp() {
   // Compress responses.
   app.use(compression())
 
+  // Attach request ID to each request.
+  app.use(requestIdMiddleware)
+
   // Structured HTTP logs (pino-http).
   app.use(loggerHttp)
 
@@ -70,8 +75,8 @@ export function createApp() {
       ),
   })
 
-  // TODO: replace with actual router when added
-  // app.use('/v1', apiLimiter, v1Router)
+  // Mount API v1 router.
+  app.use('/v1', apiLimiter, v1Router)
 
   // 404 handler for unknown routes.
   app.use((req, _res, next) => {
@@ -85,7 +90,7 @@ export function createApp() {
   })
 
   // Global error handler.
-  app.use(errorHandler)
+  app.use(errorHandlerMiddleware)
 
   return { app, config: { port: envConfig.PORT, env: envConfig } }
 }

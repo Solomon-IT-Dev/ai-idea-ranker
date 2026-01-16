@@ -45,7 +45,7 @@ function normalizeError(err: unknown): { safeError: AppError; original: unknown 
 /**
  * Centralized Express error handler.
  */
-export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+export const errorHandlerMiddleware: ErrorRequestHandler = (err, req, res, _next) => {
   const { safeError, original } = normalizeError(err)
 
   const status: ErrorResponseBody['status'] = String(safeError.statusCode).startsWith('4')
