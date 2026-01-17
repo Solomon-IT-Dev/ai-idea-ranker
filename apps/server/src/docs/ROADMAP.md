@@ -53,6 +53,8 @@ Goal: upload/enter a list of PoC ideas (markdown/text), parse, and persist.
 
 ## Milestone 2 — Playbook ingestion + citations (RAG foundation)
 
+Status: ✅ Completed
+
 Goal: ingest a short playbook and enable cited best-practice tips.
 
 - DB
@@ -65,6 +67,8 @@ Goal: ingest a short playbook and enable cited best-practice tips.
   - `POST /v1/projects/:projectId/playbook`
     - `{ title?: string, content: string }`
   - `GET /v1/projects/:projectId/playbook`
+  - Optional:
+    - `POST /v1/projects/:projectId/playbook:search` (semantic search)
 
 - Notes
   - first iteration may store chunks without embeddings
@@ -74,6 +78,8 @@ Goal: ingest a short playbook and enable cited best-practice tips.
 ---
 
 ## Milestone 3 — Embeddings + retrieval (pgvector)
+
+Status: ✅ Completed
 
 Goal: enable semantic retrieval for playbook citations.
 

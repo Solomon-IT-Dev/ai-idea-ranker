@@ -74,6 +74,10 @@ See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
   - `GET /v1/projects/:projectId/ideas?limit=50&offset=0`
   - `PATCH /v1/ideas/:id`
   - `DELETE /v1/ideas/:id`
+- Playbook:
+  - `POST /v1/projects/:projectId/playbook`
+  - `GET /v1/projects/:projectId/playbook`
+  - `POST /v1/projects/:projectId/playbook:search`
 
 ---
 

@@ -3,7 +3,11 @@ import { Router } from 'express'
 import { controller } from '../../lib/controller.lib.js'
 import { requireAuthMiddleware } from '../../middlewares/requireAuth.middleware.js'
 
-import { getPlaybookController, upsertPlaybookController } from './playbook.controller.js'
+import {
+  getPlaybookController,
+  searchPlaybookController,
+  upsertPlaybookController,
+} from './playbook.controller.js'
 
 export const playbookRouter = Router()
 
@@ -14,3 +18,9 @@ playbookRouter.post(
 )
 
 playbookRouter.get('/:projectId/playbook', requireAuthMiddleware, controller(getPlaybookController))
+
+playbookRouter.post(
+  '/:projectId/playbook:search',
+  requireAuthMiddleware,
+  controller(searchPlaybookController)
+)

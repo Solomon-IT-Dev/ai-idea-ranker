@@ -5,3 +5,11 @@ export type ErrorResponseBody = {
   requestId?: string
   stack?: string
 }
+
+export type OpenAIErrorResponse = {
+  error?: {
+    message?: string
+    type?: string
+    code?: string
+  }
+}

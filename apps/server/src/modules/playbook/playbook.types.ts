@@ -20,3 +20,11 @@ export type PlaybookChunkRow = {
   chunk_text: string
   created_at: string
 }
+
+export type MatchPlaybookChunkRow = {
+  id: string
+  chunk_index: number
+  chunk_title: string | null
+  chunk_text: string
+  similarity: number
+}

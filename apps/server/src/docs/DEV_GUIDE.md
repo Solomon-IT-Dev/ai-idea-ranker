@@ -198,6 +198,8 @@ Supabase SQL editor.
 - Apply in order (once):
   - `src/db/sql/001_projects.sql`
   - `src/db/sql/002_ideas.sql`
+  - `src/db/sql/003_playbooks.sql`
+  - `src/db/sql/004_playbook_embeddings.sql`
 - Note: these files use `create policy ...` without `if not exists`. Re-running
   them may fail unless you drop existing policies first.
 
@@ -247,6 +249,14 @@ Closing DB pools is only relevant if a direct DB driver (pg pool, Prisma, etc.) 
 Ideas import parsing is deterministic and currently treats each non-empty line
 as an idea (common list prefixes are removed; Markdown headings are ignored;
 case-insensitive duplicates are removed).
+
+### Playbook
+- `POST /v1/projects/:projectId/playbook` — upserts playbook markdown and rebuilds chunks.
+- `GET /v1/projects/:projectId/playbook` — returns `{ playbook, chunks }`.
+- `POST /v1/projects/:projectId/playbook:search` — semantic search over chunks (requires embeddings).
+
+Playbook semantic search uses pgvector + OpenAI embeddings and requires
+`OPENAI_API_KEY` to be configured.
 
 ---
 

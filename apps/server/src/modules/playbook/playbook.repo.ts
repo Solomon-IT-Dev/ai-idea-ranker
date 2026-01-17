@@ -1,4 +1,4 @@
-import type { PlaybookChunkRow, PlaybookRow } from './playbook.types.js'
+import type { MatchPlaybookChunkRow, PlaybookChunkRow, PlaybookRow } from './playbook.types.js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function upsertPlaybook(
@@ -97,4 +97,53 @@ export async function selectChunksByProjectId(
 
   if (error) throw error
   return (data ?? []) as PlaybookChunkRow[]
+}
+
+export async function selectChunksByPlaybookId(
+  db: SupabaseClient,
+  playbookId: string
+): Promise<PlaybookChunkRow[]> {
+  const { data, error } = await db
+    .from('playbook_chunks')
+    .select('*')
+    .eq('playbook_id', playbookId)
+    .order('chunk_index', { ascending: true })
+
+  if (error) throw error
+  return (data ?? []) as PlaybookChunkRow[]
+}
+
+export async function updateChunkEmbedding(
+  db: SupabaseClient,
+  chunkId: string,
+  embedding: string
+): Promise<void> {
+  const { error } = await db.from('playbook_chunks').update({ embedding }).eq('id', chunkId)
+
+  if (error) throw error
+}
+
+export async function matchPlaybookChunks(
+  db: SupabaseClient,
+  input: { projectId: string; queryEmbedding: string; matchCount: number }
+): Promise<MatchPlaybookChunkRow[]> {
+  const { data, error } = await db.rpc('match_playbook_chunks', {
+    p_project_id: input.projectId,
+    p_query_embedding: input.queryEmbedding,
+    p_match_count: input.matchCount,
+  })
+
+  if (error) throw error
+  return (data ?? []) as MatchPlaybookChunkRow[]
+}
+
+export async function hasChunksForProject(db: SupabaseClient, projectId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('playbook_chunks')
+    .select('id')
+    .eq('project_id', projectId)
+    .limit(1)
+
+  if (error) throw error
+  return (data ?? []).length > 0
 }
