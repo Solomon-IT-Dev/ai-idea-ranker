@@ -53,22 +53,3 @@ process.on('unhandledRejection', err => {
 // Graceful shutdown on termination signals (common in Docker/CI/hosting).
 process.on('SIGTERM', () => void shutdown('SIGTERM'))
 process.on('SIGINT', () => void shutdown('SIGINT'))
-
-// import dotenv from 'dotenv'
-// import { existsSync } from 'node:fs'
-// import { dirname, resolve } from 'node:path'
-// import { fileURLToPath } from 'node:url'
-
-// // Load .env from the repo root (fallback to package-local .env if present).
-// const __dirname = dirname(fileURLToPath(import.meta.url))
-// const envCandidates = [
-//   resolve(__dirname, '../../.env'), // monorepo root
-//   resolve(__dirname, './.env'), // package-local
-// ]
-
-// for (const candidate of envCandidates) {
-//   if (existsSync(candidate)) {
-//     dotenv.config({ path: candidate })
-//     break
-//   }
-// }

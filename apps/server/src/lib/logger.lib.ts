@@ -7,4 +7,7 @@ export const logger = pino({
   level: envConfig.NODE_ENV === 'production' ? 'info' : 'debug',
 })
 
-export const loggerHttp = pinoHttp({ logger })
+export const loggerHttp = pinoHttp({
+  logger,
+  redact: { paths: ['req.headers.authorization'], remove: true },
+})
