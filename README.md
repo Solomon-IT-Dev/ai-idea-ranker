@@ -58,7 +58,7 @@ This repo currently focuses on the **server** (`apps/server`). The **client** wi
 - Supabase Postgres with real RLS enforcement via **Variant B**:
   - per-request Supabase client (Anon Key + User JWT)
 
-See `docs/DEV_GUIDE.md` for the authoritative conventions.
+See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
 
 ---
 
@@ -69,6 +69,11 @@ See `docs/DEV_GUIDE.md` for the authoritative conventions.
 - Projects:
   - `POST /v1/projects`
   - `GET /v1/projects/:id`
+- Ideas:
+  - `POST /v1/projects/:projectId/ideas:import`
+  - `GET /v1/projects/:projectId/ideas?limit=50&offset=0`
+  - `PATCH /v1/ideas/:id`
+  - `DELETE /v1/ideas/:id`
 
 ---
 
@@ -80,7 +85,7 @@ pnpm install
 ```
 
 ### 2) Configure environment
-Create `apps/server/.env` (or your preferred local env setup). See `docs/DEV_GUIDE.md` for exact variables.
+Create `apps/server/.env` (or your preferred local env setup). See `apps/server/src/docs/DEV_GUIDE.md` for exact variables.
 
 ### 3) Run server
 ```bash
@@ -107,8 +112,8 @@ AI provider is **OpenAI**.
 
 ## Documentation
 
-- `docs/DEV_GUIDE.md` — server architecture, conventions, local development
-- `docs/ROADMAP.md` — backend milestones to complete the MVP
+- `apps/server/src/docs/DEV_GUIDE.md` — server architecture, conventions, local development
+- `apps/server/src/docs/ROADMAP.md` — backend milestones to complete the MVP
 
 ---
 

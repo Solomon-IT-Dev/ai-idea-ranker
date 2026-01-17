@@ -20,6 +20,8 @@ AI decisions:
 
 ## Milestone 1 — Ideas Import & Storage (no AI yet)
 
+Status: ✅ Completed
+
 Goal: upload/enter a list of PoC ideas (markdown/text), parse, and persist.
 
 - DB
@@ -36,10 +38,11 @@ Goal: upload/enter a list of PoC ideas (markdown/text), parse, and persist.
 - API
   - `POST /v1/projects/:projectId/ideas:import`
     - input: `{ text: string }`
-    - output: created ideas
-  - `GET /v1/projects/:projectId/ideas`
+    - output: `{ insertedCount, ideas, truncated }`
+  - `GET /v1/projects/:projectId/ideas?limit=50&offset=0`
   - Optional for UX:
     - `PATCH /v1/ideas/:id` (edit and rerun)
+    - `DELETE /v1/ideas/:id`
 
 - Implementation notes
   - parsing belongs in service layer

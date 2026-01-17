@@ -8,4 +8,5 @@ import { createProjectController, getProjectController } from './projects.contro
 export const projectsRouter = Router()
 
 projectsRouter.post('/', requireAuthMiddleware, controller(createProjectController))
+
 projectsRouter.get('/:id', requireAuthMiddleware, controller(getProjectController))

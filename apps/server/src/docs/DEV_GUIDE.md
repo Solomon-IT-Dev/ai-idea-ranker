@@ -190,6 +190,17 @@ This enables Postgres `auth.uid()` in RLS policies.
   - seeding / migration utilities
   - batch reprocessing where RLS is not applicable
 
+### 6.4 DB schema (manual SQL)
+
+SQL schema changes are stored in `src/db/sql/` and are applied manually in the
+Supabase SQL editor.
+
+- Apply in order (once):
+  - `src/db/sql/001_projects.sql`
+  - `src/db/sql/002_ideas.sql`
+- Note: these files use `create policy ...` without `if not exists`. Re-running
+  them may fail unless you drop existing policies first.
+
 ---
 
 ## 7) Security Middleware Baseline
@@ -218,6 +229,24 @@ The entrypoint (`index.ts`) must support graceful shutdown:
 - keep shutdown idempotent
 
 Closing DB pools is only relevant if a direct DB driver (pg pool, Prisma, etc.) is added later.
+
+---
+
+## 10) Implemented API (current)
+
+### Projects
+- `POST /v1/projects`
+- `GET /v1/projects/:id`
+
+### Ideas
+- `POST /v1/projects/:projectId/ideas:import` — imports ideas from plain text/Markdown.
+- `GET /v1/projects/:projectId/ideas?limit=50&offset=0` — lists ideas in a project.
+- `PATCH /v1/ideas/:id` — updates `{ title?, rawText?, meta? }` (at least one field).
+- `DELETE /v1/ideas/:id`
+
+Ideas import parsing is deterministic and currently treats each non-empty line
+as an idea (common list prefixes are removed; Markdown headings are ignored;
+case-insensitive duplicates are removed).
 
 ---
 
