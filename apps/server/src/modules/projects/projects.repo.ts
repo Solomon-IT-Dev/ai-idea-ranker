@@ -1,4 +1,4 @@
-import type { ProjectRow } from '../../types/project.types.js'
+import type { ProjectRow } from './project.types.js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function insertProject(

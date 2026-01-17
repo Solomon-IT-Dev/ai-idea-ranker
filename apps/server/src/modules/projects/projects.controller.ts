@@ -26,5 +26,5 @@ export const getProjectController: Controller = async (req, res) => {
     Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
   )
 
-  res.json({ project })
+  res.status(200).json({ project })
 }

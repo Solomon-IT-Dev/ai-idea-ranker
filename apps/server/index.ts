@@ -14,7 +14,7 @@ process.on('uncaughtException', err => {
 
 const { app, config } = createApp()
 
-const server: Server | null = null
+let server: Server | null = null
 let isShuttingDown = false
 
 async function shutdown(signalOrReason: string, err?: unknown) {
@@ -34,13 +34,13 @@ async function shutdown(signalOrReason: string, err?: unknown) {
     server.close(() => resolve())
   })
 
-  // TODO: close DB pools, flush telemetry, etc. (when added)
+  // Close external resources here when added (queues, workers, db pools, etc.)
 
   logger.info('Shutdown complete.')
   process.exit(err ? 1 : 0)
 }
 
-app.listen(config.port, () => {
+server = app.listen(config.port, () => {
   logger.info({ port: config.port, env: config.env.NODE_ENV }, 'API server started.')
 })
 
