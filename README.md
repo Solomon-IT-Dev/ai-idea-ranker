@@ -78,6 +78,9 @@ See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
   - `POST /v1/projects/:projectId/playbook`
   - `GET /v1/projects/:projectId/playbook`
   - `POST /v1/projects/:projectId/playbook:search`
+- Runs:
+  - `POST /v1/projects/:projectId/runs`
+  - `GET /v1/projects/:projectId/runs/:runId`
 
 ---
 

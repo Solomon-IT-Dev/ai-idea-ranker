@@ -83,16 +83,6 @@ export async function createRun(
   const maxIdeas = 40
   const ideasCapped = ideas.slice(0, maxIdeas)
 
-  // Retrieve playbook sources (RAG)
-  const sources = await searchPlaybook(db, {
-    projectId: input.projectId,
-    query:
-      'Best practices for prioritizing R&D ideas by impact, effort, risk, and data readiness. Include guidance on metrics and go/no-go.',
-    topK: 6,
-  })
-
-  const sourceIds = new Set(sources.map(s => s.id))
-
   const inputSnapshot = {
     project: {
       id: project.id,
@@ -121,6 +111,16 @@ export async function createRun(
   })
 
   try {
+    // Retrieve playbook sources (RAG)
+    const sources = await searchPlaybook(db, {
+      projectId: input.projectId,
+      query:
+        'Best practices for prioritizing R&D ideas by impact, effort, risk, and data readiness. Include guidance on metrics and go/no-go.',
+      topK: 6,
+    })
+
+    const sourceIds = new Set(sources.map(s => s.id))
+
     const sourcesText = sources
       .map(s => {
         const title = s.chunk_title ? `Title: ${s.chunk_title}` : 'Title: (none)'

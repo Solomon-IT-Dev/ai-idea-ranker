@@ -200,6 +200,7 @@ Supabase SQL editor.
   - `src/db/sql/002_ideas.sql`
   - `src/db/sql/003_playbooks.sql`
   - `src/db/sql/004_playbook_embeddings.sql`
+  - `src/db/sql/005_runs.sql`
 - Note: these files use `create policy ...` without `if not exists`. Re-running
   them may fail unless you drop existing policies first.
 
@@ -257,6 +258,12 @@ case-insensitive duplicates are removed).
 
 Playbook semantic search uses pgvector + OpenAI embeddings and requires
 `OPENAI_API_KEY` to be configured.
+
+### Runs (AI scoring & ranking)
+- `POST /v1/projects/:projectId/runs` — creates an AI scoring run and stores `idea_scores`.
+- `GET /v1/projects/:projectId/runs/:runId` — returns `{ run, scores }`.
+
+Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 
 ---
 

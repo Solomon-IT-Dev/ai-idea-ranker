@@ -95,6 +95,8 @@ Goal: enable semantic retrieval for playbook citations.
 
 ## Milestone 4 — AI scoring & ranking
 
+Status: ✅ Completed
+
 Goal: score and rank ideas using OpenAI; keep aggregation deterministic server-side.
 
 - DB
