@@ -1,7 +1,10 @@
 import { envConfig } from '../config/env.config.js'
-import { embeddingsConstants } from '../constants/embeddings.constants.js'
-import { AppError } from '../lib/appError.lib.js'
+import {
+  OPENAI_EMBEDDINGS_MODEL,
+  OPENAI_EMBEDDINGS_URL,
+} from '../constants/embeddings.constants.js'
 
+import { AppError } from './appError.lib.js'
 import { logger } from './logger.lib.js'
 
 import type { EmbeddingsResponse } from '../types/embeddings.types.js'
@@ -21,14 +24,14 @@ export async function createEmbeddings(input: string[]): Promise<number[][]> {
     })
   }
 
-  const res = await fetch(embeddingsConstants.openaiEmbeddingsUrl, {
+  const res = await fetch(OPENAI_EMBEDDINGS_URL, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: embeddingsConstants.embeddingModel,
+      model: OPENAI_EMBEDDINGS_MODEL,
       input,
       encoding_format: 'float',
       // dimensions: 1536, // optional; default for this model is 1536

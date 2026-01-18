@@ -1,0 +1,278 @@
+import { OPENAI_CHAT_MODEL_DEFAULT, PROMPT_VERSION } from '../../constants/chat.constants.js'
+import { AppError } from '../../lib/appError.lib.js'
+import { chatJson } from '../../lib/openaiChat.lib.js'
+import { searchPlaybook } from '../playbook/playbook.service.js'
+import { assertProjectAccess } from '../projects/projects.guard.js'
+
+import {
+  insertIdeaScores,
+  insertRun,
+  selectIdeasByProjectId,
+  selectIdeaScoresByRunId,
+  selectProjectById,
+  selectRunById,
+  updateRun,
+} from './runs.repo.js'
+import { aiRunResultSchema } from './runs.schemas.js'
+
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+function computeOverallRaw(
+  s: { impact: number; effort: number; risk: number; dataReadiness: number },
+  w: { impact: number; effort: number; risk: number; dataReadiness: number }
+) {
+  // Higher impact is better; higher effort/risk is worse; higher data readiness is better.
+  // Normalize to a simple weighted score.
+  return (
+    w.impact * s.impact + w.dataReadiness * s.dataReadiness - w.effort * s.effort - w.risk * s.risk
+  )
+}
+
+function normalizeOverallTo100(
+  raw: number,
+  w: { impact: number; effort: number; risk: number; dataReadiness: number }
+) {
+  // Score ranges when each metric is in [1..10]
+  const pos = w.impact + w.dataReadiness
+  const neg = w.effort + w.risk
+
+  const maxRaw = pos * 10 - neg * 1
+  const minRaw = pos * 1 - neg * 10
+
+  if (maxRaw === minRaw) return 50
+
+  const normalized = ((raw - minRaw) / (maxRaw - minRaw)) * 100
+  return Math.max(0, Math.min(100, normalized))
+}
+
+function safeJsonParse(input: string) {
+  try {
+    return JSON.parse(input)
+  } catch {
+    throw new AppError({
+      statusCode: 502,
+      errorType: 'openai_invalid_json',
+      message: 'AI returned invalid JSON.',
+    })
+  }
+}
+
+export async function createRun(
+  db: SupabaseClient,
+  input: {
+    ownerId: string
+    projectId: string
+    topN: number
+    weights: { impact: number; effort: number; risk: number; dataReadiness: number }
+  }
+) {
+  await assertProjectAccess(db, input.projectId)
+
+  const project = await selectProjectById(db, input.projectId)
+
+  const ideas = await selectIdeasByProjectId(db, input.projectId)
+  if (ideas.length === 0) {
+    throw new AppError({
+      statusCode: 400,
+      errorType: 'ideas_empty',
+      message: 'No ideas found for this project.',
+    })
+  }
+
+  // Safety cap to keep prompt predictable for MVP
+  const maxIdeas = 40
+  const ideasCapped = ideas.slice(0, maxIdeas)
+
+  // Retrieve playbook sources (RAG)
+  const sources = await searchPlaybook(db, {
+    projectId: input.projectId,
+    query:
+      'Best practices for prioritizing R&D ideas by impact, effort, risk, and data readiness. Include guidance on metrics and go/no-go.',
+    topK: 6,
+  })
+
+  const sourceIds = new Set(sources.map(s => s.id))
+
+  const inputSnapshot = {
+    project: {
+      id: project.id,
+      name: project.name,
+      constraints: project.constraints,
+    },
+    ideas: ideasCapped.map(i => ({
+      id: i.id,
+      title: i.title,
+      text: i.raw_text,
+    })),
+    weights: input.weights,
+    topN: input.topN,
+    promptVersion: PROMPT_VERSION,
+  }
+
+  // Create run early as running (audit trail even if LLM fails)
+  const run = await insertRun(db, {
+    project_id: input.projectId,
+    owner_id: input.ownerId,
+    model: OPENAI_CHAT_MODEL_DEFAULT,
+    weights: input.weights,
+    top_n: input.topN,
+    prompt_version: PROMPT_VERSION,
+    input_snapshot: inputSnapshot,
+  })
+
+  try {
+    const sourcesText = sources
+      .map(s => {
+        const title = s.chunk_title ? `Title: ${s.chunk_title}` : 'Title: (none)'
+        return `Source chunkId=${s.id}\n${title}\n${s.chunk_text}`
+      })
+      .join('\n\n---\n\n')
+
+    const ideasText = ideasCapped
+      .map(i => `ideaId=${i.id}\ntitle=${i.title}\ntext=${i.raw_text}`)
+      .join('\n\n---\n\n')
+
+    const system = `
+                          You are an R&D prioritization assistant.
+                          Return ONLY valid JSON that matches the required schema.
+                          Use the provided Sources to justify best-practice tips and include citations.
+                          Citations must reference chunkId values exactly as provided and the quote must be copied from the Source text.
+                          Scores are 1..10.
+                          - Higher impact is better.
+                          - Higher dataReadiness is better.
+                          - Higher effort is worse.
+                          - Higher risk is worse.
+                          Do not invent sources. If a claim requires a best-practice tip, cite it.
+                          `.trim()
+
+    const user = `
+                        PROJECT CONSTRAINTS (use for rough estimates):
+                        ${JSON.stringify(project.constraints ?? {}, null, 2)}
+
+                        SOURCES:
+                        ${sourcesText}
+
+                        IDEAS:
+                        ${ideasText}
+
+                        TASK:
+                        For each idea, output:
+                        - ideaId
+                        - impact, effort, risk, dataReadiness (1..10)
+                        - rationale (brief)
+                        - citations: up to 8 items { chunkId, quote } copied from Sources
+                        - costEstimateUsd (optional, rough)
+                        - resourceEstimate: { feDays?, beDays?, dsDays? } (rough)
+
+                        Return JSON with shape: { "scores": [ ... ] }.
+                        `.trim()
+
+    const { model, content } = await chatJson(system, user, { model: OPENAI_CHAT_MODEL_DEFAULT })
+
+    const rawJson = safeJsonParse(content)
+    const parsed = aiRunResultSchema.parse(rawJson)
+
+    // Validate returned ideaIds are within input list
+    const allowedIdeaIds = new Set(ideasCapped.map(i => i.id))
+    for (const s of parsed.scores) {
+      if (!allowedIdeaIds.has(s.ideaId)) {
+        throw new AppError({
+          statusCode: 502,
+          errorType: 'openai_invalid_idea_id',
+          message: 'AI returned an unknown ideaId.',
+        })
+      }
+
+      // Validate citations reference retrieved sources only
+      for (const c of s.citations ?? []) {
+        if (!sourceIds.has(c.chunkId)) {
+          throw new AppError({
+            statusCode: 502,
+            errorType: 'openai_invalid_citation',
+            message: 'AI returned a citation to an unknown source chunk.',
+          })
+        }
+      }
+    }
+
+    // Build rows
+    const rows = parsed.scores.map(s => {
+      const rawOverall = computeOverallRaw(
+        {
+          impact: s.impact,
+          effort: s.effort,
+          risk: s.risk,
+          dataReadiness: s.dataReadiness,
+        },
+        input.weights
+      )
+      const overall = normalizeOverallTo100(rawOverall, input.weights)
+
+      return {
+        run_id: run.id,
+        project_id: input.projectId,
+        owner_id: input.ownerId,
+        idea_id: s.ideaId,
+        impact: s.impact,
+        effort: s.effort,
+        risk: s.risk,
+        data_readiness: s.dataReadiness,
+        overall,
+        rationale: s.rationale,
+        citations: s.citations ?? [],
+        cost_estimate_usd: s.costEstimateUsd,
+        resource_estimate: s.resourceEstimate ?? {},
+      }
+    })
+
+    const savedScores = await insertIdeaScores(db, rows)
+
+    // Persist run completion + debug metadata
+    await updateRun(db, run.id, {
+      status: 'completed',
+      sources_used: sources.map(s => ({
+        chunkId: s.id,
+        title: s.chunk_title,
+        similarity: s.similarity,
+      })),
+      raw_ai_response: rawJson,
+      error_type: null,
+      error_message: null,
+    })
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sorted = [...savedScores].sort((a: any, b: any) => b.overall - a.overall)
+    const top = sorted.slice(0, input.topN)
+
+    return { run: { ...run, model, status: 'completed' }, top }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    // Persist failure state for observability
+    await updateRun(db, run.id, {
+      status: 'failed',
+      error_type: err?.errorType ?? 'unknown_error',
+      error_message: err?.message ?? 'Run failed.',
+    })
+
+    throw err
+  }
+}
+
+export async function getRun(db: SupabaseClient, input: { projectId: string; runId: string }) {
+  await assertProjectAccess(db, input.projectId)
+
+  const run = await selectRunById(db, input.runId)
+
+  if (run.project_id !== input.projectId) {
+    // Avoid leaking existence of run IDs across projects
+    throw new AppError({
+      statusCode: 404,
+      errorType: 'run_not_found',
+      message: 'Run not found.',
+    })
+  }
+
+  const scores = await selectIdeaScoresByRunId(db, input.runId)
+
+  return { run, scores }
+}
