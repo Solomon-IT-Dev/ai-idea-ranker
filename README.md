@@ -84,6 +84,7 @@ See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
 - Artifacts:
   - `POST /v1/projects/:projectId/runs/:runId/artifacts:generate`
   - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest`
+  - `GET /v1/projects/:projectId/runs/:runId/artifacts`
 
 ---
 

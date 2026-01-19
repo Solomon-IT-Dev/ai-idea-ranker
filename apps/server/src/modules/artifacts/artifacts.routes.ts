@@ -6,6 +6,7 @@ import { requireAuthMiddleware } from '../../middlewares/requireAuth.middleware.
 import {
   generateArtifactsController,
   getLatestArtifactsController,
+  listArtifactsController,
 } from './artifacts.controller.js'
 
 export const artifactsRouter = Router()
@@ -20,4 +21,10 @@ artifactsRouter.get(
   '/:projectId/runs/:runId/artifacts:latest',
   requireAuthMiddleware,
   controller(getLatestArtifactsController)
+)
+
+artifactsRouter.get(
+  '/:projectId/runs/:runId/artifacts',
+  requireAuthMiddleware,
+  controller(listArtifactsController)
 )

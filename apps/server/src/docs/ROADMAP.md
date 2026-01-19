@@ -1,6 +1,7 @@
 # Backend Roadmap (MVP-first, Senior-level demo)
 
 This roadmap describes the remaining backend work after:
+
 - server bootstrap (Express + TypeScript + ESM)
 - requestId + centralized error handling (`AppError`)
 - Supabase Auth via JWKS (`jose`)
@@ -8,13 +9,16 @@ This roadmap describes the remaining backend work after:
 - Projects module implemented and validated with multi-user RLS checks
 
 Product constraints:
+
 - **Text/markdown only** for inputs and outputs
 - Single-user MVP is acceptable, but Supabase Auth enables multi-user quickly
 - Tests are postponed until the end (if time remains)
 
 AI decisions:
+
 - AI provider: **OpenAI**
-- Planned orchestration: **Vercel AI SDK + a minimal LangChain module** (only where it adds real value)
+- Planned orchestration: **Vercel AI SDK + a minimal LangChain module** (only where it adds real
+  value)
 
 ---
 
@@ -159,8 +163,6 @@ Goal: improve UX by streaming progress during AI generation.
 
 ## Milestone 7 — Hardening / DX (if time remains)
 
-- redact authorization token from logs (mandatory for any public deployment)
 - OpenAI resiliency: timeouts, retries (429), safe fallbacks
 - caching: hash inputs to reuse previous scoring/plan outputs
 - minimal DevDocs endpoint contracts (or OpenAPI/Swagger)
-- minimal unit tests for pure logic

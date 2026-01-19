@@ -269,6 +269,7 @@ Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 ### Artifacts (30/60/90 + Experiment Card)
 - `POST /v1/projects/:projectId/runs/:runId/artifacts:generate` — generates artifacts for a completed run.
 - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest` — returns latest stored artifacts.
+- `GET /v1/projects/:projectId/runs/:runId/artifacts` — returns all artifacts for the run.
 
 ---
 

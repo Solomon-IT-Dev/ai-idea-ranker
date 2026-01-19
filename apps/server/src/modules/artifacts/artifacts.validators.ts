@@ -13,3 +13,8 @@ export const getLatestArtifactsParamsSchema = z.object({
   projectId: z.uuid(),
   runId: z.uuid(),
 })
+
+export const listArtifactsParamsSchema = z.object({
+  projectId: z.uuid(),
+  runId: z.uuid(),
+})

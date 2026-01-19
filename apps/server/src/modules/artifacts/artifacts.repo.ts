@@ -50,3 +50,17 @@ export async function selectLatestArtifactsByRunId(
 
   return { plan, experimentCard }
 }
+
+export async function selectArtifactsByRunId(
+  db: SupabaseClient,
+  runId: string
+): Promise<ArtifactRow[]> {
+  const { data, error } = await db
+    .from('artifacts')
+    .select('*')
+    .eq('run_id', runId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []) as ArtifactRow[]
+}

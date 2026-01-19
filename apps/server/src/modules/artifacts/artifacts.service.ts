@@ -4,7 +4,11 @@ import { chatJson } from '../../lib/openaiChat.lib.js'
 import { selectChunksByIds } from '../playbook/playbook.repo.js'
 import { getRun } from '../runs/runs.service.js'
 
-import { insertArtifact, selectLatestArtifactsByRunId } from './artifacts.repo.js'
+import {
+  insertArtifact,
+  selectArtifactsByRunId,
+  selectLatestArtifactsByRunId,
+} from './artifacts.repo.js'
 import { aiArtifactsSchema } from './artifacts.schemas.js'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -283,5 +287,30 @@ export async function getLatestArtifacts(
   return {
     runId: input.runId,
     artifacts,
+  }
+}
+
+export async function listArtifacts(
+  db: SupabaseClient,
+  input: { projectId: string; runId: string }
+) {
+  // Ensures project access + run belongs to project (через вашу existing реализацию)
+  await getRun(db, { projectId: input.projectId, runId: input.runId })
+
+  const artifacts = await selectArtifactsByRunId(db, input.runId)
+
+  // Group by type for UI convenience
+  const byType = artifacts.reduce(
+    (acc, a) => {
+      acc[a.type].push(a)
+      return acc
+    },
+    { plan_30_60_90: [] as typeof artifacts, experiment_card: [] as typeof artifacts }
+  )
+
+  return {
+    runId: input.runId,
+    artifacts,
+    byType,
   }
 }
