@@ -119,7 +119,23 @@ export async function createRun(
       topK: 6,
     })
 
+    if (sources.length === 0) {
+      throw new AppError({
+        statusCode: 400,
+        errorType: 'playbook_empty',
+        message: 'Playbook has no chunks; cannot run RAG scoring.',
+      })
+    }
+
     const sourceIds = new Set(sources.map(s => s.id))
+    const sourcesUsed = sources.map(s => ({
+      chunkId: s.id,
+      title: s.chunk_title,
+      similarity: s.similarity,
+    }))
+
+    // Persist sources early so artifacts generation can rely on them even if the LLM call fails later.
+    await updateRun(db, run.id, { sources_used: sourcesUsed })
 
     const sourcesText = sources
       .map(s => {
@@ -227,13 +243,10 @@ Return JSON with shape: { "scores": [ ... ] }.
     const savedScores = await insertIdeaScores(db, rows)
 
     // Persist run completion + debug metadata
-    await updateRun(db, run.id, {
+    const updatedRun = await updateRun(db, run.id, {
       status: 'completed',
-      sources_used: sources.map(s => ({
-        chunkId: s.id,
-        title: s.chunk_title,
-        similarity: s.similarity,
-      })),
+      model,
+      sources_used: sourcesUsed,
       raw_ai_response: rawJson,
       error_type: null,
       error_message: null,
@@ -243,7 +256,7 @@ Return JSON with shape: { "scores": [ ... ] }.
     const sorted = [...savedScores].sort((a: any, b: any) => b.overall - a.overall)
     const top = sorted.slice(0, input.topN)
 
-    return { run: { ...run, model, status: 'completed' }, top }
+    return { run: updatedRun, top }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     // Persist failure state for observability

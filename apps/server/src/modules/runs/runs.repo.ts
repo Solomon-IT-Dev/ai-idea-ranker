@@ -96,6 +96,7 @@ export async function updateRun(
   runId: string,
   patch: Partial<{
     status: string
+    model: string
     sources_used: any
     input_snapshot: any
     raw_ai_response: any
