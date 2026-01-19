@@ -172,6 +172,7 @@ Return ONLY valid JSON matching the required schema.
 Use SOURCES for best-practice recommendations and include citations with exact chunkId values.
 Quotes must be copied verbatim from SOURCES.
 Do not invent sources.
+Do not return citations as strings; citations must be objects: { "chunkId": "...", "quote": "..." }.
 `.trim()
 
   const user = `
@@ -194,6 +195,7 @@ TASK:
 3) Add citations for best-practice tips using chunkId values from SOURCES.
    - Quotes must be copied verbatim from SOURCES.
    - Keep citations concise and relevant.
+   - citations must be objects: { "chunkId": "...", "quote": "..." }.
 
 Return JSON:
 {

@@ -1,9 +1,44 @@
 import { z } from 'zod'
 
-export const artifactCitationSchema = z.object({
-  chunkId: z.uuid(),
-  quote: z.string().min(1).max(300),
-})
+const uuidRegex =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i
+
+function coerceCitation(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+
+  const text = value.trim()
+  if (!text) return value
+
+  // Sometimes models return a JSON object serialized as a string.
+  if (text.startsWith('{') && text.endsWith('}')) {
+    try {
+      return JSON.parse(text)
+    } catch {
+      // fall through to best-effort parsing
+    }
+  }
+
+  const match = uuidRegex.exec(text)
+  if (!match) return value
+
+  const chunkId = match[0]
+  let quote = text.slice(match.index + chunkId.length).trim()
+  quote = quote.replace(/^[:\-–—\s]+/, '').trim()
+  quote = quote.replace(/^[“"]+/, '').replace(/[”"]+$/, '').trim()
+
+  // As a last resort, use the whole string as "quote" to avoid hard failure.
+  if (!quote) quote = text.slice(0, 300)
+
+  return { chunkId, quote }
+}
+
+export const artifactCitationSchema = z.preprocess(
+  coerceCitation,
+  z.object({
+    chunkId: z.uuid(),
+    quote: z.string().min(1).max(300),
+  })
+)
 
 export const aiArtifactsSchema = z.object({
   plan: z.object({
