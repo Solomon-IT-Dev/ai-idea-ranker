@@ -147,3 +147,13 @@ export async function hasChunksForProject(db: SupabaseClient, projectId: string)
   if (error) throw error
   return (data ?? []).length > 0
 }
+
+export async function selectChunksByIds(db: SupabaseClient, chunkIds: string[]) {
+  const { data, error } = await db
+    .from('playbook_chunks')
+    .select('id, chunk_index, chunk_title, chunk_text')
+    .in('id', chunkIds)
+
+  if (error) throw error
+  return data ?? []
+}

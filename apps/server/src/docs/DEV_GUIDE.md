@@ -201,6 +201,7 @@ Supabase SQL editor.
   - `src/db/sql/003_playbooks.sql`
   - `src/db/sql/004_playbook_embeddings.sql`
   - `src/db/sql/005_runs.sql`
+  - `src/db/sql/006_artifacts.sql`
 - Note: these files use `create policy ...` without `if not exists`. Re-running
   them may fail unless you drop existing policies first.
 
@@ -264,6 +265,10 @@ Playbook semantic search uses pgvector + OpenAI embeddings and requires
 - `GET /v1/projects/:projectId/runs/:runId` — returns `{ run, scores }`.
 
 Runs use OpenAI chat for scoring and use playbook retrieval for citations.
+
+### Artifacts (30/60/90 + Experiment Card)
+- `POST /v1/projects/:projectId/runs/:runId/artifacts:generate` — generates artifacts for a completed run.
+- `GET /v1/projects/:projectId/runs/:runId/artifacts:latest` — returns latest stored artifacts.
 
 ---
 

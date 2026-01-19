@@ -1,5 +1,6 @@
 import { Router } from 'express'
 
+import { artifactsRouter } from '../modules/artifacts/artifacts.routes.js'
 import { authRouter } from '../modules/auth/auth.routes.js'
 import { ideaRouter } from '../modules/ideas/idea.routes.js'
 import { ideasRouter } from '../modules/ideas/ideas.routes.js'
@@ -15,3 +16,4 @@ v1Router.use('/projects', ideasRouter)
 v1Router.use('/ideas', ideaRouter)
 v1Router.use('/projects', playbookRouter)
 v1Router.use('/projects', runsRouter)
+v1Router.use('/projects', artifactsRouter)

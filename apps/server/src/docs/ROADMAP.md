@@ -124,6 +124,8 @@ Goal: score and rank ideas using OpenAI; keep aggregation deterministic server-s
 
 ## Milestone 5 — 30-60-90 plan + Experiment Card
 
+Status: ✅ Completed
+
 Goal: generate actionable artifacts for top picks.
 
 - Artifacts

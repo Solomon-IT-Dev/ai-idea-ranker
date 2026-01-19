@@ -133,39 +133,38 @@ export async function createRun(
       .join('\n\n---\n\n')
 
     const system = `
-                          You are an R&D prioritization assistant.
-                          Return ONLY valid JSON that matches the required schema.
-                          Use the provided Sources to justify best-practice tips and include citations.
-                          Citations must reference chunkId values exactly as provided and the quote must be copied from the Source text.
-                          Scores are 1..10.
-                          - Higher impact is better.
-                          - Higher dataReadiness is better.
-                          - Higher effort is worse.
-                          - Higher risk is worse.
-                          Do not invent sources. If a claim requires a best-practice tip, cite it.
-                          `.trim()
+You are an R&D prioritization assistant.
+Return ONLY valid JSON that matches the required schema.
+Use the provided Sources to justify best-practice tips and include citations.
+ Citations must reference chunkId values exactly as provided and the quote must be copied from the Source text.
+Scores are 1..10.
+- Higher impact is better.
+- Higher dataReadiness is better.
+- Higher effort is worse.
+- Higher risk is worse.
+Do not invent sources. If a claim requires a best-practice tip, cite it.
+`.trim()
 
     const user = `
-                        PROJECT CONSTRAINTS (use for rough estimates):
-                        ${JSON.stringify(project.constraints ?? {}, null, 2)}
+PROJECT CONSTRAINTS (use for rough estimates):
+${JSON.stringify(project.constraints ?? {}, null, 2)}
 
-                        SOURCES:
-                        ${sourcesText}
+SOURCES:
+${sourcesText}
 
-                        IDEAS:
-                        ${ideasText}
+IDEAS:
+${ideasText}
 
-                        TASK:
-                        For each idea, output:
-                        - ideaId
-                        - impact, effort, risk, dataReadiness (1..10)
-                        - rationale (brief)
-                        - citations: up to 8 items { chunkId, quote } copied from Sources
-                        - costEstimateUsd (optional, rough)
-                        - resourceEstimate: { feDays?, beDays?, dsDays? } (rough)
-
-                        Return JSON with shape: { "scores": [ ... ] }.
-                        `.trim()
+TASK:
+For each idea, output:
+- ideaId
+- impact, effort, risk, dataReadiness (1..10)
+- rationale (brief)
+- citations: up to 8 items { chunkId, quote } copied from Sources
+- costEstimateUsd (optional, rough)
+- resourceEstimate: { feDays?, beDays?, dsDays? } (rough)
+Return JSON with shape: { "scores": [ ... ] }.
+`.trim()
 
     const { model, content } = await chatJson(system, user, { model: OPENAI_CHAT_MODEL_DEFAULT })
 

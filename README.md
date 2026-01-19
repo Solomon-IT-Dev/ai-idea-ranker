@@ -81,6 +81,9 @@ See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
 - Runs:
   - `POST /v1/projects/:projectId/runs`
   - `GET /v1/projects/:projectId/runs/:runId`
+- Artifacts:
+  - `POST /v1/projects/:projectId/runs/:runId/artifacts:generate`
+  - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest`
 
 ---
 
