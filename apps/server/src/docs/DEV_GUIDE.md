@@ -273,6 +273,10 @@ Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest` — returns latest stored artifacts.
 - `GET /v1/projects/:projectId/runs/:runId/artifacts` — returns all artifacts for the run.
 
+### API Docs (OpenAPI / Swagger)
+- `GET /openapi.json` — OpenAPI 3.1 spec (JSON)
+- `GET /docs` — Swagger UI (loads `swagger-ui-dist` from a CDN)
+
 ---
 
 ## 10) Environment Variables

@@ -127,6 +127,9 @@ AI provider is **OpenAI**.
 
 - `apps/server/src/docs/DEV_GUIDE.md` — server architecture, conventions, local development
 - `apps/server/src/docs/ROADMAP.md` — backend milestones to complete the MVP
+- API docs:
+  - `GET /openapi.json` — OpenAPI spec
+  - `GET /docs` — Swagger UI (loads assets from a CDN)
 
 ---
 

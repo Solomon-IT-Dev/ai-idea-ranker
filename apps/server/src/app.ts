@@ -11,6 +11,7 @@ import { AppError } from './lib/appError.lib.js'
 import { loggerHttp } from './lib/logger.lib.js'
 import { errorHandlerMiddleware } from './middlewares/errorHandler.middleware.js'
 import { requestIdMiddleware } from './middlewares/requestId.middleware.js'
+import { openapiRouter } from './modules/openapi/openapi.routes.js'
 import { v1Router } from './routes/v1.router.js'
 
 export function createApp() {
@@ -64,6 +65,9 @@ export function createApp() {
   app.get('/health', (_req, res) => {
     res.status(200).json({ ok: true })
   })
+
+  // Public docs (OpenAPI JSON + Swagger UI).
+  app.use(openapiRouter)
 
   // Apply rate limiting to API routes (not healthcheck).
   const apiLimiter = rateLimit({
