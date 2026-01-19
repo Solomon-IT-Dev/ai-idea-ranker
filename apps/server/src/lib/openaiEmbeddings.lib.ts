@@ -5,6 +5,7 @@ import {
 } from '../constants/embeddings.constants.js'
 
 import { AppError } from './appError.lib.js'
+import { fetchWithRetry } from './fetchWithRetry.lib.js'
 import { logger } from './logger.lib.js'
 
 import type { EmbeddingsResponse } from '../types/embeddings.types.js'
@@ -24,19 +25,23 @@ export async function createEmbeddings(input: string[]): Promise<number[][]> {
     })
   }
 
-  const res = await fetch(OPENAI_EMBEDDINGS_URL, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      'content-type': 'application/json',
+  const res = await fetchWithRetry(
+    OPENAI_EMBEDDINGS_URL,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OPENAI_EMBEDDINGS_MODEL,
+        input,
+        encoding_format: 'float',
+        // dimensions: 1536, // optional; default for this model is 1536
+      }),
     },
-    body: JSON.stringify({
-      model: OPENAI_EMBEDDINGS_MODEL,
-      input,
-      encoding_format: 'float',
-      // dimensions: 1536, // optional; default for this model is 1536
-    }),
-  })
+    { timeoutMs: 60_000, retries: 2, retryDelayMs: 500, maxRetryDelayMs: 5000 }
+  )
 
   if (!res.ok) {
     const bodyText = await res.text().catch(() => '')
@@ -71,6 +76,14 @@ export async function createEmbeddings(input: string[]): Promise<number[][]> {
         statusCode: 503,
         errorType: 'openai_rate_limited',
         message: 'Embeddings provider rate limited. Please retry later.',
+      })
+    }
+
+    if (res.status >= 500 && res.status <= 599) {
+      throw new AppError({
+        statusCode: 503,
+        errorType: 'openai_unavailable',
+        message: 'Embeddings provider temporarily unavailable. Please retry later.',
       })
     }
 

@@ -163,6 +163,5 @@ Goal: improve UX by streaming progress during AI generation.
 
 ## Milestone 7 — Hardening / DX (if time remains)
 
-- OpenAI resiliency: timeouts, retries (429), safe fallbacks
 - caching: hash inputs to reuse previous scoring/plan outputs
 - minimal DevDocs endpoint contracts (or OpenAPI/Swagger)
