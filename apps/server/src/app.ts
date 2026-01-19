@@ -46,7 +46,13 @@ export function createApp() {
   app.use(hpp())
 
   // Compress responses.
-  app.use(compression())
+  app.use((req, res, next) => {
+    // SSE must not be buffered/compressed
+    if (req.path.endsWith('/stream')) {
+      return next()
+    }
+    return compression()(req, res, next)
+  })
 
   // Attach request ID to each request.
   app.use(requestIdMiddleware)

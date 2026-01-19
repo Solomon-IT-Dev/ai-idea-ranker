@@ -1,11 +1,6 @@
 import { AppError } from './appError.lib.js'
 
-type RetryOptions = {
-  timeoutMs: number
-  retries: number
-  retryDelayMs: number
-  maxRetryDelayMs: number
-}
+import type { RetryOptions } from '../types/fetch.types.js'
 
 function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -84,10 +79,7 @@ export async function fetchWithRetry(
       }
 
       // Retry on network errors and timeouts.
-      const delay = Math.min(
-        options.maxRetryDelayMs,
-        options.retryDelayMs * 2 ** (attempt - 1)
-      )
+      const delay = Math.min(options.maxRetryDelayMs, options.retryDelayMs * 2 ** (attempt - 1))
       await sleep(delay + jitterMs(200))
     }
   }
@@ -98,4 +90,3 @@ export async function fetchWithRetry(
     message: 'OpenAI is temporarily unavailable. Please retry later.',
   })
 }
-

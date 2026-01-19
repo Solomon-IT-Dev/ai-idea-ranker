@@ -1,6 +1,8 @@
 import { OPENAI_CHAT_MODEL_DEFAULT, PROMPT_VERSION } from '../../constants/chat.constants.js'
 import { AppError } from '../../lib/appError.lib.js'
+import { logger } from '../../lib/logger.lib.js'
 import { chatJson } from '../../lib/openaiChat.lib.js'
+import { closeRunStream, publishRunEvent } from '../../lib/runStream.lib.js'
 import { searchPlaybook } from '../playbook/playbook.service.js'
 import { assertProjectAccess } from '../projects/projects.guard.js'
 
@@ -22,7 +24,6 @@ function computeOverallRaw(
   w: { impact: number; effort: number; risk: number; dataReadiness: number }
 ) {
   // Higher impact is better; higher effort/risk is worse; higher data readiness is better.
-  // Normalize to a simple weighted score.
   return (
     w.impact * s.impact + w.dataReadiness * s.dataReadiness - w.effort * s.effort - w.risk * s.risk
   )
@@ -57,61 +58,29 @@ function safeJsonParse(input: string) {
   }
 }
 
-export async function createRun(
+async function executeRunInternal(
   db: SupabaseClient,
   input: {
     ownerId: string
     projectId: string
     topN: number
     weights: { impact: number; effort: number; risk: number; dataReadiness: number }
-  }
+    project: { id: string; name: string; constraints: unknown }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ideasCapped: any[]
+    inputSnapshot: unknown
+  },
+  run: { id: string }
 ) {
-  await assertProjectAccess(db, input.projectId)
-
-  const project = await selectProjectById(db, input.projectId)
-
-  const ideas = await selectIdeasByProjectId(db, input.projectId)
-  if (ideas.length === 0) {
-    throw new AppError({
-      statusCode: 400,
-      errorType: 'ideas_empty',
-      message: 'No ideas found for this project.',
-    })
-  }
-
-  // Safety cap to keep prompt predictable for MVP
-  const maxIdeas = 40
-  const ideasCapped = ideas.slice(0, maxIdeas)
-
-  const inputSnapshot = {
-    project: {
-      id: project.id,
-      name: project.name,
-      constraints: project.constraints,
-    },
-    ideas: ideasCapped.map(i => ({
-      id: i.id,
-      title: i.title,
-      text: i.raw_text,
-    })),
-    weights: input.weights,
-    topN: input.topN,
-    promptVersion: PROMPT_VERSION,
-  }
-
-  // Create run early as running (audit trail even if LLM fails)
-  const run = await insertRun(db, {
-    project_id: input.projectId,
-    owner_id: input.ownerId,
-    model: OPENAI_CHAT_MODEL_DEFAULT,
-    weights: input.weights,
-    top_n: input.topN,
-    prompt_version: PROMPT_VERSION,
-    input_snapshot: inputSnapshot,
-  })
+  publishRunEvent(run.id, 'run.started', { runId: run.id, projectId: input.projectId })
 
   try {
-    // Retrieve playbook sources (RAG)
+    publishRunEvent(run.id, 'plan.progress', {
+      runId: run.id,
+      stage: 'retrieval',
+      message: 'Retrieving playbook sources...',
+    })
+
     const sources = await searchPlaybook(db, {
       projectId: input.projectId,
       query:
@@ -130,12 +99,18 @@ export async function createRun(
     const sourceIds = new Set(sources.map(s => s.id))
     const sourcesUsed = sources.map(s => ({
       chunkId: s.id,
-      title: s.chunk_title,
-      similarity: s.similarity,
+      title: s.chunk_title ?? null,
+      similarity: s.similarity ?? null,
     }))
 
-    // Persist sources early so artifacts generation can rely on them even if the LLM call fails later.
     await updateRun(db, run.id, { sources_used: sourcesUsed })
+
+    publishRunEvent(run.id, 'plan.progress', {
+      runId: run.id,
+      stage: 'sources_ready',
+      message: `Sources ready: ${sourcesUsed.length} chunks.`,
+      count: sourcesUsed.length,
+    })
 
     const sourcesText = sources
       .map(s => {
@@ -144,7 +119,7 @@ export async function createRun(
       })
       .join('\n\n---\n\n')
 
-    const ideasText = ideasCapped
+    const ideasText = input.ideasCapped
       .map(i => `ideaId=${i.id}\ntitle=${i.title}\ntext=${i.raw_text}`)
       .join('\n\n---\n\n')
 
@@ -152,7 +127,7 @@ export async function createRun(
 You are an R&D prioritization assistant.
 Return ONLY valid JSON that matches the required schema.
 Use the provided Sources to justify best-practice tips and include citations.
- Citations must reference chunkId values exactly as provided and the quote must be copied from the Source text.
+Citations must reference chunkId values exactly as provided and the quote must be copied from the Source text.
 Scores are 1..10.
 - Higher impact is better.
 - Higher dataReadiness is better.
@@ -163,7 +138,7 @@ Do not invent sources. If a claim requires a best-practice tip, cite it.
 
     const user = `
 PROJECT CONSTRAINTS (use for rough estimates):
-${JSON.stringify(project.constraints ?? {}, null, 2)}
+${JSON.stringify(input.project.constraints ?? {}, null, 2)}
 
 SOURCES:
 ${sourcesText}
@@ -182,13 +157,18 @@ For each idea, output:
 Return JSON with shape: { "scores": [ ... ] }.
 `.trim()
 
+    publishRunEvent(run.id, 'plan.progress', {
+      runId: run.id,
+      stage: 'scoring',
+      message: 'Scoring ideas with AI...',
+    })
+
     const { model, content } = await chatJson(system, user, { model: OPENAI_CHAT_MODEL_DEFAULT })
 
     const rawJson = safeJsonParse(content)
     const parsed = aiRunResultSchema.parse(rawJson)
 
-    // Validate returned ideaIds are within input list
-    const allowedIdeaIds = new Set(ideasCapped.map(i => i.id))
+    const allowedIdeaIds = new Set(input.ideasCapped.map(i => i.id))
     for (const s of parsed.scores) {
       if (!allowedIdeaIds.has(s.ideaId)) {
         throw new AppError({
@@ -198,7 +178,6 @@ Return JSON with shape: { "scores": [ ... ] }.
         })
       }
 
-      // Validate citations reference retrieved sources only
       for (const c of s.citations ?? []) {
         if (!sourceIds.has(c.chunkId)) {
           throw new AppError({
@@ -210,15 +189,15 @@ Return JSON with shape: { "scores": [ ... ] }.
       }
     }
 
-    // Build rows
+    publishRunEvent(run.id, 'plan.progress', {
+      runId: run.id,
+      stage: 'persist',
+      message: 'Saving scores...',
+    })
+
     const rows = parsed.scores.map(s => {
       const rawOverall = computeOverallRaw(
-        {
-          impact: s.impact,
-          effort: s.effort,
-          risk: s.risk,
-          dataReadiness: s.dataReadiness,
-        },
+        { impact: s.impact, effort: s.effort, risk: s.risk, dataReadiness: s.dataReadiness },
         input.weights
       )
       const overall = normalizeOverallTo100(rawOverall, input.weights)
@@ -242,7 +221,16 @@ Return JSON with shape: { "scores": [ ... ] }.
 
     const savedScores = await insertIdeaScores(db, rows)
 
-    // Persist run completion + debug metadata
+    // Publish per-idea progress (MVP: from saved rows; future: stream inside AI loop)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const s of savedScores as any[]) {
+      publishRunEvent(run.id, 'idea.scored', {
+        runId: run.id,
+        ideaId: s.idea_id,
+        overall: s.overall,
+      })
+    }
+
     const updatedRun = await updateRun(db, run.id, {
       status: 'completed',
       model,
@@ -252,22 +240,130 @@ Return JSON with shape: { "scores": [ ... ] }.
       error_message: null,
     })
 
+    publishRunEvent(run.id, 'run.completed', { runId: run.id, status: updatedRun.status })
+    closeRunStream(run.id)
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sorted = [...savedScores].sort((a: any, b: any) => b.overall - a.overall)
     const top = sorted.slice(0, input.topN)
 
     return { run: updatedRun, top }
+  } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    // Persist failure state for observability
-    await updateRun(db, run.id, {
+    const e = err as any
+
+    const failedRun = await updateRun(db, run.id, {
       status: 'failed',
-      error_type: err?.errorType ?? 'unknown_error',
-      error_message: err?.message ?? 'Run failed.',
+      error_type: e?.errorType ?? 'unknown_error',
+      error_message: e?.message ?? 'Run failed.',
     })
+
+    publishRunEvent(run.id, 'run.failed', {
+      runId: run.id,
+      status: failedRun.status,
+      errorType: e?.errorType ?? 'unknown_error',
+      message: e?.message ?? 'Run failed.',
+    })
+    closeRunStream(run.id)
 
     throw err
   }
+}
+
+export async function createRun(
+  db: SupabaseClient,
+  input: {
+    ownerId: string
+    projectId: string
+    topN: number
+    weights: { impact: number; effort: number; risk: number; dataReadiness: number }
+  }
+) {
+  await assertProjectAccess(db, input.projectId)
+
+  const project = await selectProjectById(db, input.projectId)
+
+  const ideas = await selectIdeasByProjectId(db, input.projectId)
+  if (ideas.length === 0) {
+    throw new AppError({
+      statusCode: 400,
+      errorType: 'ideas_empty',
+      message: 'No ideas found for this project.',
+    })
+  }
+
+  const maxIdeas = 40
+  const ideasCapped = ideas.slice(0, maxIdeas)
+
+  const inputSnapshot = {
+    project: { id: project.id, name: project.name, constraints: project.constraints },
+    ideas: ideasCapped.map(i => ({ id: i.id, title: i.title, text: i.raw_text })),
+    weights: input.weights,
+    topN: input.topN,
+    promptVersion: PROMPT_VERSION,
+  }
+
+  const run = await insertRun(db, {
+    project_id: input.projectId,
+    owner_id: input.ownerId,
+    model: OPENAI_CHAT_MODEL_DEFAULT,
+    weights: input.weights,
+    top_n: input.topN,
+    prompt_version: PROMPT_VERSION,
+    input_snapshot: inputSnapshot,
+  })
+
+  return executeRunInternal(db, { ...input, project, ideasCapped, inputSnapshot }, run)
+}
+
+export async function startRun(
+  db: SupabaseClient,
+  input: {
+    ownerId: string
+    projectId: string
+    topN: number
+    weights: { impact: number; effort: number; risk: number; dataReadiness: number }
+  }
+) {
+  await assertProjectAccess(db, input.projectId)
+
+  const project = await selectProjectById(db, input.projectId)
+
+  const ideas = await selectIdeasByProjectId(db, input.projectId)
+  if (ideas.length === 0) {
+    throw new AppError({
+      statusCode: 400,
+      errorType: 'ideas_empty',
+      message: 'No ideas found for this project.',
+    })
+  }
+
+  const maxIdeas = 40
+  const ideasCapped = ideas.slice(0, maxIdeas)
+
+  const inputSnapshot = {
+    project: { id: project.id, name: project.name, constraints: project.constraints },
+    ideas: ideasCapped.map(i => ({ id: i.id, title: i.title, text: i.raw_text })),
+    weights: input.weights,
+    topN: input.topN,
+    promptVersion: PROMPT_VERSION,
+  }
+
+  const run = await insertRun(db, {
+    project_id: input.projectId,
+    owner_id: input.ownerId,
+    model: OPENAI_CHAT_MODEL_DEFAULT,
+    weights: input.weights,
+    top_n: input.topN,
+    prompt_version: PROMPT_VERSION,
+    input_snapshot: inputSnapshot,
+  })
+
+  void executeRunInternal(db, { ...input, project, ideasCapped, inputSnapshot }, run).catch(err => {
+    logger.error({ err, runId: run.id }, 'Async run execution failed.')
+  })
+
+  return { run }
 }
 
 export async function getRun(db: SupabaseClient, input: { projectId: string; runId: string }) {
@@ -276,7 +372,6 @@ export async function getRun(db: SupabaseClient, input: { projectId: string; run
   const run = await selectRunById(db, input.runId)
 
   if (run.project_id !== input.projectId) {
-    // Avoid leaking existence of run IDs across projects
     throw new AppError({
       statusCode: 404,
       errorType: 'run_not_found',

@@ -148,10 +148,12 @@ Goal: generate actionable artifacts for top picks.
 
 ## Milestone 6 — Streaming (SSE)
 
+Status: ✅ Completed
+
 Goal: improve UX by streaming progress during AI generation.
 
 - API
-  - `GET /v1/runs/:runId/stream` (SSE)
+  - `GET /v1/projects/:projectId/runs/:runId/stream` (SSE)
 
 - Events
   - `run.started`, `idea.scored`, `plan.progress`, `run.completed`, `run.failed`

@@ -80,7 +80,9 @@ See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
   - `POST /v1/projects/:projectId/playbook:search`
 - Runs:
   - `POST /v1/projects/:projectId/runs`
+  - `POST /v1/projects/:projectId/runs:execute` (async)
   - `GET /v1/projects/:projectId/runs/:runId`
+  - `GET /v1/projects/:projectId/runs/:runId/stream` (SSE)
 - Artifacts:
   - `POST /v1/projects/:projectId/runs/:runId/artifacts:generate`
   - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest`

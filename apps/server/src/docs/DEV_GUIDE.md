@@ -262,7 +262,9 @@ Playbook semantic search uses pgvector + OpenAI embeddings and requires
 
 ### Runs (AI scoring & ranking)
 - `POST /v1/projects/:projectId/runs` — creates an AI scoring run and stores `idea_scores`.
+- `POST /v1/projects/:projectId/runs:execute` — starts an async scoring run (use SSE to follow progress).
 - `GET /v1/projects/:projectId/runs/:runId` — returns `{ run, scores }`.
+- `GET /v1/projects/:projectId/runs/:runId/stream` — server-sent events (SSE) for run progress.
 
 Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 

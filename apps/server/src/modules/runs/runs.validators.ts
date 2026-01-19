@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const projectIdParamsSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.uuid(),
 })
 
 export const createRunBodySchema = z.object({
@@ -20,3 +20,6 @@ export const runIdParamsSchema = z.object({
   projectId: z.uuid(),
   runId: z.uuid(),
 })
+
+export const executeRunBodySchema = createRunBodySchema
+export const streamRunParamsSchema = runIdParamsSchema
