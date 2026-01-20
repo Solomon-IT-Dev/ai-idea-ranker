@@ -122,6 +122,9 @@ export function useRunStream(input: { projectId: string; runId: string; enabled:
     isConnected,
     events,
     lastEvent,
-    stop: () => abortRef.current?.abort(),
+    stop: () => {
+      setIsConnected(false)
+      abortRef.current?.abort()
+    },
   }
 }
