@@ -13,13 +13,13 @@ export function ProjectIdeasTab() {
   const ideasQuery = useIdeas(pid)
   const importMutation = useImportIdeas(pid)
 
-  async function onImport(text: string) {
-    try {
-      const res = await importMutation.mutateAsync(text)
-      const imported = res.imported ?? res.ideas?.length ?? 0
-      toast.success(`Imported ${imported} ideas.`)
-    } catch (e) {
-      toast.error('Failed to import ideas.')
+	  async function onImport(text: string) {
+	    try {
+	      const res = await importMutation.mutateAsync(text)
+	      const imported = res.insertedCount ?? res.ideas.length
+	      toast.success(`Imported ${imported} ideas.`)
+	    } catch (e) {
+	      toast.error('Failed to import ideas.')
 
       console.error(e)
     }
