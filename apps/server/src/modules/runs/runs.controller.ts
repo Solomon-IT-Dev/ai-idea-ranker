@@ -4,7 +4,7 @@ import { subscribeToRunStream, writeSseEvent } from '../../lib/runStream.lib.js'
 import { assertProjectAccess } from '../projects/projects.guard.js'
 
 import { selectRunById } from './runs.repo.js'
-import { createRun, getRun, startRun } from './runs.service.js'
+import { createRun, getRun, listRuns, startRun } from './runs.service.js'
 import {
   createRunBodySchema,
   executeRunBodySchema,
@@ -13,6 +13,16 @@ import {
 } from './runs.validators.js'
 
 import type { Controller } from '../../types/controller.types.js'
+
+export const listRunsController: Controller = async (req, res) => {
+  const { projectId } = projectIdParamsSchema.parse(req.params)
+
+  const db = createSupabaseForRequest(req)
+
+  const runs = await listRuns(db, { projectId })
+
+  res.status(200).json({ runs })
+}
 
 export const createRunController: Controller = async (req, res) => {
   const { projectId } = projectIdParamsSchema.parse(req.params)

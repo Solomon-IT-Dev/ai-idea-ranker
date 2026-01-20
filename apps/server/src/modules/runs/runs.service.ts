@@ -13,6 +13,7 @@ import {
   selectIdeaScoresByRunId,
   selectProjectById,
   selectRunById,
+  selectRunsByProjectId,
   updateRun,
 } from './runs.repo.js'
 import { aiRunResultSchema } from './runs.schemas.js'
@@ -382,4 +383,10 @@ export async function getRun(db: SupabaseClient, input: { projectId: string; run
   const scores = await selectIdeaScoresByRunId(db, input.runId)
 
   return { run, scores }
+}
+
+export async function listRuns(db: SupabaseClient, input: { projectId: string }) {
+  await assertProjectAccess(db, input.projectId)
+
+  return selectRunsByProjectId(db, input.projectId)
 }

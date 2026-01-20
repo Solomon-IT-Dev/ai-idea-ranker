@@ -533,6 +533,33 @@ export const openapiSpec = {
       },
     },
     '/v1/projects/{projectId}/runs': {
+      get: {
+        tags: ['Runs'],
+        summary: 'List runs for a project',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        responses: {
+          '200': {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    runs: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Run' },
+                      default: [],
+                    },
+                  },
+                  required: ['runs'],
+                },
+              },
+            },
+          },
+          '401': { $ref: '#/components/schemas/ErrorResponse' },
+        },
+      },
       post: {
         tags: ['Runs'],
         summary: 'Create scoring run (sync)',
