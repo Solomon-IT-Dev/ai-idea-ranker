@@ -1,8 +1,9 @@
-import { QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Toaster } from 'sonner'
 
-import { queryClient } from './queryClient'
+import { AuthProvider } from '@/features/auth/model/auth.provider'
+
+import { AppQueryProvider } from './query.provider'
 
 function ErrorFallback() {
   return (
@@ -18,10 +19,12 @@ function ErrorFallback() {
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster richColors />
-      </QueryClientProvider>
+      <AppQueryProvider>
+        <AuthProvider>
+          {children}
+          <Toaster richColors />
+        </AuthProvider>
+      </AppQueryProvider>
     </ErrorBoundary>
   )
 }
