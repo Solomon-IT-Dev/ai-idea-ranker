@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "pnpm -C apps/server dev",
     "dev:server": "pnpm -C apps/server dev",
-    "dev:client": "pnpm -C apps/server dev",
+    "dev:client": "pnpm -C apps/client dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write"

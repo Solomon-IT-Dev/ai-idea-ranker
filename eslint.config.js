@@ -1,21 +1,36 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import js from '@eslint/js'
 import prettier from 'eslint-config-prettier'
 import importPlugin from 'eslint-plugin-import'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import tseslint from 'typescript-eslint'
 
+const tsconfigRootDir = path.dirname(fileURLToPath(import.meta.url))
+
 export default [
+  {
+    ignores: ['**/dist/**', '**/dist-ssr/**', '**/node_modules/**'],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
+
+  {
+    files: ['**/*.{js,cjs,mjs,ts,tsx,cts,mts}'],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir,
+      },
+    },
+  },
 
   {
     plugins: {
       import: importPlugin,
       'simple-import-sort': simpleImportSort,
     },
-
-    ignores: ['**/dist/**', '**/node_modules/**'],
 
     rules: {
       'no-console': 'warn',
