@@ -153,6 +153,14 @@ A wrapper such as `controller()` is used to:
 - Unknown errors: return `unknown_error` with a generic message
 - In non-production, the error handler may attach debug details for faster diagnosis.
 
+### 5.6 List endpoints convention
+
+For collection/list endpoints:
+- Return `200` with an empty array when there are no results (do **not** return
+  `404`).
+- Use a stable JSON shape (e.g. `{ projects: [] }`) so the client can render an
+  empty state without treating it as an error.
+
 ### 5.5 Request correlation
 - Every request gets an `x-request-id` header.
 - Error responses must include `requestId`.

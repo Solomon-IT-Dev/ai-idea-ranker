@@ -1,9 +1,17 @@
 import { createSupabaseForRequest } from '../../db/supabase.request.js'
 
-import { createProject, getProjectById } from './projects.service.js'
+import { createProject, getProjectById, listProjectsByOwner } from './projects.service.js'
 import { createProjectBodySchema } from './projects.validators.js'
 
 import type { Controller } from '../../types/controller.types.js'
+
+export const listProjectsController: Controller = async (req, res) => {
+  const db = createSupabaseForRequest(req)
+
+  const projects = await listProjectsByOwner(db, req.userId!)
+
+  res.status(200).json({ projects })
+}
 
 export const createProjectController: Controller = async (req, res) => {
   const body = createProjectBodySchema.parse(req.body)

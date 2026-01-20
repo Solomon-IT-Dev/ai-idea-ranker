@@ -229,6 +229,32 @@ export const openapiSpec = {
       },
     },
     '/v1/projects': {
+      get: {
+        tags: ['Projects'],
+        summary: 'List projects',
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    projects: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Project' },
+                      default: [],
+                    },
+                  },
+                  required: ['projects'],
+                },
+              },
+            },
+          },
+          '401': { $ref: '#/components/schemas/ErrorResponse' },
+        },
+      },
       post: {
         tags: ['Projects'],
         summary: 'Create project',
@@ -683,4 +709,3 @@ export const openapiSpec = {
     },
   },
 } as const
-

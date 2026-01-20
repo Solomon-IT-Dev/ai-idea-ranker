@@ -22,7 +22,19 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <AppQueryProvider>
         <AuthProvider>
           {children}
-          <Toaster richColors />
+          <Toaster
+            richColors
+            theme="dark"
+            toastOptions={{
+              classNames: {
+                toast: 'bg-card text-foreground border-border border',
+                title: 'text-foreground',
+                description: 'text-muted-foreground',
+                actionButton: 'bg-primary text-primary-foreground',
+                cancelButton: 'bg-muted text-muted-foreground',
+              },
+            }}
+          />
         </AuthProvider>
       </AppQueryProvider>
     </ErrorBoundary>

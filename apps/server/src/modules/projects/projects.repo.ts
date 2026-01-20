@@ -17,3 +17,14 @@ export async function selectProjectById(db: SupabaseClient, id: string) {
   if (error) throw error
   return row as ProjectRow
 }
+
+export async function selectProjectsByOwnerId(db: SupabaseClient, ownerId: string) {
+  const { data: rows, error } = await db
+    .from('projects')
+    .select('*')
+    .eq('owner_id', ownerId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return (rows ?? []) as ProjectRow[]
+}

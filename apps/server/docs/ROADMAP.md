@@ -7,6 +7,7 @@ This roadmap describes the remaining backend work after:
 - Supabase Auth via JWKS (`jose`)
 - Supabase DB **Variant B** (request-scoped client; RLS enforced)
 - Projects module implemented and validated with multi-user RLS checks
+  - includes `GET /v1/projects` returning `200 { projects: [] }` when empty
 
 Product constraints:
 

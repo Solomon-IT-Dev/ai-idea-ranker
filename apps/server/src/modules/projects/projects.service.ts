@@ -1,6 +1,6 @@
 import { AppError } from '../../lib/appError.lib.js'
 
-import { insertProject, selectProjectById } from './projects.repo.js'
+import { insertProject, selectProjectById, selectProjectsByOwnerId } from './projects.repo.js'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -25,4 +25,8 @@ export async function getProjectById(db: SupabaseClient, id: string) {
       message: 'Project not found.',
     })
   }
+}
+
+export async function listProjectsByOwner(db: SupabaseClient, ownerId: string) {
+  return selectProjectsByOwnerId(db, ownerId)
 }
