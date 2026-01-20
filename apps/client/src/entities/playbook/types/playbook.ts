@@ -3,8 +3,9 @@ export type Playbook = {
   project_id: string
   owner_id: string
   title: string
+  content_markdown: string
   created_at: string
-  updated_at?: string | null
+  updated_at: string
 }
 
 export type PlaybookChunk = {
@@ -27,6 +28,12 @@ export type GetPlaybookResponse = {
 export type UpsertPlaybookBody = {
   title: string
   content: string
+}
+
+export type UpsertPlaybookResponse = {
+  playbook: Playbook
+  chunksInserted: number
+  embeddings: { status: 'ok' | 'failed'; errorType?: string }
 }
 
 export type PlaybookSearchResult = {

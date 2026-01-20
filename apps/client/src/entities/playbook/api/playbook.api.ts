@@ -2,6 +2,7 @@ import type {
   GetPlaybookResponse,
   PlaybookSearchResult,
   UpsertPlaybookBody,
+  UpsertPlaybookResponse,
 } from '@/entities/playbook/types/playbook'
 import { apiFetch } from '@/shared/api/http'
 
@@ -10,7 +11,7 @@ export async function getPlaybook(projectId: string) {
 }
 
 export async function upsertPlaybook(projectId: string, body: UpsertPlaybookBody) {
-  return apiFetch<GetPlaybookResponse>(`/v1/projects/${projectId}/playbook`, {
+  return apiFetch<UpsertPlaybookResponse>(`/v1/projects/${projectId}/playbook`, {
     method: 'POST',
     json: body,
   })

@@ -20,27 +20,32 @@ type Props = {
 }
 
 export function PlaybookEditor({ initial, onSave, isPending }: Props) {
-  const { register, handleSubmit, reset } = useForm<FormValues>({
+  const { register, handleSubmit, reset, setValue } = useForm<FormValues>({
     defaultValues: {
       title: initial?.playbook?.title ?? 'R&D Playbook',
-      content: '',
+      content: initial?.playbook?.content_markdown ?? '',
     },
   })
 
-  // If playbook exists, we don't auto-fill markdown (server stores chunks, not raw markdown)
-  // We keep UX simple: user paste markdown and overwrite / re-upload.
+  // Initial data arrives asynchronously; keep form in sync with saved server state.
   useEffect(() => {
     reset({
       title: initial?.playbook?.title ?? 'R&D Playbook',
-      content: '',
+      content: initial?.playbook?.content_markdown ?? '',
     })
-  }, [initial?.playbook?.id, initial?.playbook?.title, reset])
+  }, [
+    initial?.playbook?.content_markdown,
+    initial?.playbook?.id,
+    initial?.playbook?.title,
+    initial?.playbook?.updated_at,
+    reset,
+  ])
 
   async function submit(values: FormValues) {
     try {
       await onSave(values)
       toast.success('Playbook uploaded.')
-      reset({ ...values, content: '' })
+      reset(values)
     } catch (e) {
       toast.error('Failed to upload playbook.')
 
@@ -49,6 +54,16 @@ export function PlaybookEditor({ initial, onSave, isPending }: Props) {
   }
 
   const hasPlaybook = Boolean(initial?.playbook?.id)
+  const canResetFromServer = Boolean(initial?.playbook?.id)
+
+  function buildChunkText() {
+    if (!initial?.chunks?.length) return ''
+    return initial.chunks
+      .slice()
+      .sort((a, b) => a.chunk_index - b.chunk_index)
+      .map(c => c.chunk_text)
+      .join('\n\n')
+  }
 
   return (
     <Card className="p-4">
@@ -107,9 +122,27 @@ export function PlaybookEditor({ initial, onSave, isPending }: Props) {
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Uploading will replace the current playbook chunks for this project.
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Uploading will replace the current playbook chunks for this project.
+            </p>
+            {canResetFromServer && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const next =
+                    initial?.playbook?.content_markdown?.trim()
+                      ? initial.playbook.content_markdown
+                      : buildChunkText()
+                  setValue('content', next)
+                }}
+              >
+                Reset from server
+              </Button>
+            )}
+          </div>
 
           <Button onClick={handleSubmit(submit)} disabled={isPending}>
             {isPending ? 'Uploading…' : hasPlaybook ? 'Re-upload' : 'Upload'}
