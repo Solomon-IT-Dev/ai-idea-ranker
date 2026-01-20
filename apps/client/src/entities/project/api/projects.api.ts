@@ -10,3 +10,7 @@ export async function listProjects() {
 export async function createProject(input: { name: string; constraints: ProjectConstraints }) {
   return apiFetch<{ project: Project }>('/v1/projects', { method: 'POST', json: input })
 }
+
+export async function getProject(projectId: string) {
+  return apiFetch<{ project: Project }>(`/v1/projects/${projectId}`)
+}

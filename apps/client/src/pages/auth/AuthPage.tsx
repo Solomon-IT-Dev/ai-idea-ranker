@@ -2,39 +2,18 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { z } from 'zod'
 
+import type { SignInForm, SignUpForm } from '@/features/auth/model/auth.forms'
+import { signInSchema, signUpSchema } from '@/features/auth/model/auth.forms'
 import { useAuth } from '@/features/auth/model/auth.hooks'
-import { zodResolver } from '@/shared/lib/rhf-zod-resolver'
 import { getLastProjectId } from '@/shared/lib/storage'
 import { supabase } from '@/shared/lib/supabase'
+import { zodResolver } from '@/shared/lib/zodResolver'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
-
-const emailSchema = z.string().email()
-const passwordSchema = z.string().min(6).max(72)
-
-const signInSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-})
-
-const signUpSchema = z
-  .object({
-    email: emailSchema,
-    password: passwordSchema,
-    passwordConfirm: passwordSchema,
-  })
-  .refine(v => v.password === v.passwordConfirm, {
-    message: 'Passwords do not match',
-    path: ['passwordConfirm'],
-  })
-
-type SignInForm = z.infer<typeof signInSchema>
-type SignUpForm = z.infer<typeof signUpSchema>
 
 export function AuthPage() {
   const { isReady, accessToken } = useAuth()

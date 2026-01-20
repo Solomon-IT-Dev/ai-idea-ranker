@@ -3,10 +3,11 @@ import { toast } from 'sonner'
 
 import type { ApiError } from '@/shared/api/http'
 
-import { createProject, listProjects } from './projects.api'
+import { createProject, getProject, listProjects } from './projects.api'
 
 export const projectKeys = {
   all: ['projects'] as const,
+  byId: (projectId: string) => ['projects', 'byId', projectId] as const,
 }
 
 export function useProjects() {
@@ -29,5 +30,13 @@ export function useCreateProject() {
       const e = err as ApiError
       toast.error(e.message)
     },
+  })
+}
+
+export function useProject(projectId: string) {
+  return useQuery({
+    queryKey: projectKeys.byId(projectId),
+    queryFn: () => getProject(projectId),
+    enabled: Boolean(projectId),
   })
 }
