@@ -5,6 +5,7 @@ import { requireAuthMiddleware } from '../../middlewares/requireAuth.middleware.
 
 import {
   createProjectController,
+  deleteProjectController,
   getProjectController,
   listProjectsController,
 } from './projects.controller.js'
@@ -16,3 +17,5 @@ projectsRouter.get('/', requireAuthMiddleware, controller(listProjectsController
 projectsRouter.post('/', requireAuthMiddleware, controller(createProjectController))
 
 projectsRouter.get('/:id', requireAuthMiddleware, controller(getProjectController))
+
+projectsRouter.delete('/:id', requireAuthMiddleware, controller(deleteProjectController))

@@ -9,23 +9,28 @@ For architecture and deeper details, start with `apps/server/docs/README.md`.
 
 From the repo root:
 
-1) Install:
+1. Install:
+
 ```bash
 pnpm install
 ```
 
-2) Configure environment:
+2. Configure environment:
+
 - copy `apps/server/.env.example` → `apps/server/.env`
 
-3) Apply Supabase SQL schema (once per Supabase project):
+3. Apply Supabase SQL schema (once per Supabase project):
+
 - apply files from `apps/server/src/db/sql/` in order (Supabase SQL editor)
 
-4) Run:
+4. Run:
+
 ```bash
 pnpm dev:server
 ```
 
-5) Verify:
+5. Verify:
+
 - Health: `http://localhost:8080/health`
 - Swagger UI: `http://localhost:8080/docs`
 - OpenAPI JSON: `http://localhost:8080/openapi.json`
@@ -33,12 +38,14 @@ pnpm dev:server
 ## Environment Variables
 
 Required (see `apps/server/.env.example`):
+
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (system/admin tasks only)
 - `OPENAI_API_KEY` (required at startup; used for embeddings/AI flows)
 
 Common:
+
 - `NODE_ENV` (`development | staging | production`)
 - `PORT` (defaults to `8080`)
 - `CLIENT_ORIGIN` (optional; tighten CORS in production)
@@ -57,9 +64,9 @@ Common:
 
 - set `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` in `apps/server/.env`
 - run the helper script:
+
 ```bash
 pnpm -C apps/server tsx scripts/getToken.script.ts
 ```
 
-Use the printed token as:
-`Authorization: Bearer <ACCESS_TOKEN>`
+Use the printed token as: `Authorization: Bearer <ACCESS_TOKEN>`

@@ -3,11 +3,22 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 
-import { useCreateProject, useProjects } from '@/entities/project/api/projects.queries'
+import { useCreateProject, useDeleteProject, useProjects } from '@/entities/project/api/projects.queries'
 import { useAuth } from '@/features/auth/model/auth.hooks'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { setLastProjectId } from '@/shared/lib/storage'
 import { zodResolver } from '@/shared/lib/zodResolver'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/ui/alert-dialog'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import {
@@ -40,6 +51,7 @@ export function ProjectsPage() {
 
   const projectsQuery = useProjects()
   const createMutation = useCreateProject()
+  const deleteMutation = useDeleteProject()
 
   useToastQueryError(projectsQuery.isError, projectsQuery.error, 'Failed to load projects.')
 
@@ -191,7 +203,38 @@ export function ProjectsPage() {
                 onClick={() => onOpenProject(p.id)}
               >
                 <CardHeader>
-                  <CardTitle className="text-base">{p.name}</CardTitle>
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-base">{p.name}</CardTitle>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={e => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the project and all related data (ideas,
+                            runs, playbook, artifacts). This action can’t be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => void deleteMutation.mutateAsync(p.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="text-sm text-muted-foreground">

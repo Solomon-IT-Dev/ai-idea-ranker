@@ -14,3 +14,7 @@ export async function createProject(input: { name: string; constraints: ProjectC
 export async function getProject(projectId: string) {
   return apiFetch<{ project: Project }>(`/v1/projects/${projectId}`)
 }
+
+export async function deleteProject(projectId: string) {
+  return apiFetch<void>(`/v1/projects/${projectId}`, { method: 'DELETE' })
+}

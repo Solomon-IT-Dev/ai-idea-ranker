@@ -1,9 +1,20 @@
 import { useEffect, useMemo } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { useProject } from '@/entities/project/api/projects.queries'
+import { useDeleteProject, useProject } from '@/entities/project/api/projects.queries'
 import { ProjectHeader } from '@/entities/project/ui/ProjectHeader'
 import { setLastProjectId } from '@/shared/lib/storage'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/ui/alert-dialog'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
@@ -44,6 +55,7 @@ export function ProjectLayout() {
 
   const { data, isLoading, isError } = useProject(projectId ?? '')
   const project = data?.project
+  const deleteMutation = useDeleteProject()
 
   // Guard: missing param
   if (!projectId) {
@@ -93,9 +105,38 @@ export function ProjectLayout() {
             <p className="text-sm text-muted-foreground">projectId: {projectId}</p>
           </div>
 
-          <Button variant="outline" onClick={goBack}>
-            Back to projects
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">Delete project</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the project and all related data (ideas, runs,
+                    playbook, artifacts). This action can’t be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      await deleteMutation.mutateAsync(projectId)
+                      goBack()
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Button variant="outline" onClick={goBack}>
+              Back to projects
+            </Button>
+          </div>
         </div>
 
         <ProjectHeader name={project.name} constraints={project.constraints} />

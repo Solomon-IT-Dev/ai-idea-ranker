@@ -88,6 +88,11 @@ export const openapiSpec = {
           },
         },
       },
+      Forbidden: {
+        description: 'Forbidden',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+      },
       NotFound: {
         description: 'Not Found',
         headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
@@ -485,6 +490,28 @@ export const openapiSpec = {
             },
           },
           '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
+        },
+      },
+      delete: {
+        tags: ['Projects'],
+        summary: 'Delete project by id (cascades)',
+        description:
+          'Deletes the project and all related data (ideas, runs, playbooks, chunks, artifacts, scores) via DB cascades.',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          '204': { description: 'No Content' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
           '404': { $ref: '#/components/responses/NotFound' },
           '429': { $ref: '#/components/responses/TooManyRequests' },
         },

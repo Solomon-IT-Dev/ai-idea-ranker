@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 
 import type { ApiError } from '@/shared/api/http'
 
-import { createProject, getProject, listProjects } from './projects.api'
+import { createProject, deleteProject, getProject, listProjects } from './projects.api'
 
 export const projectKeys = {
   all: ['projects'] as const,
@@ -38,5 +38,24 @@ export function useProject(projectId: string) {
     queryKey: projectKeys.byId(projectId),
     queryFn: () => getProject(projectId),
     enabled: Boolean(projectId),
+  })
+}
+
+export function useDeleteProject() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteProject,
+    onSuccess: async (_data, projectId) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: projectKeys.all }),
+        qc.invalidateQueries({ queryKey: projectKeys.byId(projectId) }),
+      ])
+      toast.success('Project deleted')
+    },
+    onError: err => {
+      const e = err as ApiError
+      toast.error(e.message)
+    },
   })
 }

@@ -1,6 +1,6 @@
 import { createSupabaseForRequest } from '../../db/supabase.request.js'
 
-import { createProject, getProjectById, listProjectsByOwner } from './projects.service.js'
+import { createProject, deleteProjectById, getProjectById, listProjectsByOwner } from './projects.service.js'
 import { createProjectBodySchema } from './projects.validators.js'
 
 import type { Controller } from '../../types/controller.types.js'
@@ -35,4 +35,13 @@ export const getProjectController: Controller = async (req, res) => {
   )
 
   res.status(200).json({ project })
+}
+
+export const deleteProjectController: Controller = async (req, res) => {
+  const db = createSupabaseForRequest(req)
+
+  const projectId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
+  await deleteProjectById(db, { projectId })
+
+  res.status(204).send()
 }

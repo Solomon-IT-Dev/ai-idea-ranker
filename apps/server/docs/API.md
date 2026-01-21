@@ -27,6 +27,13 @@ Notes:
 For collection endpoints, the API returns `200` with an empty array when there are no results (not
 `404`). Responses prefer stable shapes (e.g. `{ projects: [] }`) to simplify client empty states.
 
+## Projects
+
+The project delete endpoint is a **cascade delete** (implemented via DB foreign keys):
+- `DELETE /v1/projects/:id` — deletes the project and related data (ideas, runs, playbook, chunks, artifacts, scores).
+
+Note: this requires RLS `DELETE` policies on `projects`, `runs`, `artifacts`, and `idea_scores` (see `apps/server/src/db/sql/007_delete_policies.sql`).
+
 ## Streaming (SSE)
 
 Long-running operations stream progress via SSE (`text/event-stream`).

@@ -28,3 +28,13 @@ export async function selectProjectsByOwnerId(db: SupabaseClient, ownerId: strin
   if (error) throw error
   return (rows ?? []) as ProjectRow[]
 }
+
+export async function deleteProject(db: SupabaseClient, projectId: string) {
+  const { error, count } = await db
+    .from('projects')
+    .delete({ count: 'exact' })
+    .eq('id', projectId)
+
+  if (error) throw error
+  return Boolean(count && count > 0)
+}
