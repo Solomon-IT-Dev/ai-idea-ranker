@@ -28,20 +28,26 @@ Set these in Railway (no `.env` files in production):
 - CORS is permissive in dev, but in production it uses `CLIENT_ORIGIN` (if set).
 - OpenAPI UI is exposed by the server (see `/openapi` routes).
 
+### Current deployment
+- Base URL: `https://appsserver-production-d740.up.railway.app`
+- Healthcheck: `https://appsserver-production-d740.up.railway.app/health`
+
 ## Client → Vercel
 
 ### Vercel project setup
 1. Create a new Vercel project from this GitHub repo.
 2. Set **Framework Preset**: Vite.
-3. Keep project root as the repo root (recommended for pnpm workspaces).
-4. `vercel.json` at repo root sets:
+3. Choose one of these options:
+   - **Recommended (monorepo)**: keep project root as the repo root. Vercel will use `vercel.json` at repo root.
+   - **Alternative**: set project root to `apps/client`. Vercel will use `apps/client/vercel.json`.
+4. The Vercel config sets:
    - build command: `pnpm -C apps/client build`
    - output directory: `apps/client/dist`
    - SPA rewrite: all routes → `/index.html` (for React Router)
 
 ### Required environment variables (build-time)
 Set these in Vercel:
-- `VITE_API_BASE_URL` = your Railway service URL (e.g. `https://xxx.up.railway.app`)
+- `VITE_API_BASE_URL` = your Railway service URL (e.g. `https://appsserver-production-d740.up.railway.app`)
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 

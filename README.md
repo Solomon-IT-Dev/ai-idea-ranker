@@ -126,6 +126,9 @@ curl -i http://localhost:8080/health
   - `GET /openapi.json` — OpenAPI spec
   - `GET /docs` — Swagger UI (loads assets from a CDN)
 
+### Current deployments
+- Server (Railway): `https://appsserver-production-d740.up.railway.app` (health: `/health`)
+
 ---
 
 ## Notes
