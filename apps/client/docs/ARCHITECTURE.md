@@ -78,3 +78,9 @@ Within a file:
 3. Relative imports
 
 If ESLint import sorting is configured, keep it consistent with this order.
+
+## UI Component Contract
+
+When adding or modifying shared UI wrappers (e.g. `shared/ui/input.tsx`, `shared/ui/textarea.tsx`):
+- Prefer `React.forwardRef` and expose a `displayName`.
+- Ensure compatibility with `react-hook-form` `register()` and `setValue()` by correctly passing `ref` and standard props to the underlying DOM element.

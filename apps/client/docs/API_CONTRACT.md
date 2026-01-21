@@ -16,20 +16,27 @@ Base: `VITE_API_BASE_URL` (e.g. `http://localhost:8080`)
 ## Ideas
 
 - `POST /v1/projects/:projectId/ideas:import`
-  - body: `{ ideas: [{ title?, text }] }` (text/markdown)
-  - server must enforce that imported ideas cannot be inserted into other owner project (projectId
-    scoping + RLS)
+  - body: `{ text }` (text/markdown; server parses into ideas)
+  - response: `{ insertedCount, ideas, truncated }`
 - `GET /v1/projects/:projectId/ideas`
-- `PATCH /v1/projects/:projectId/ideas/:ideaId`
-- `DELETE /v1/projects/:projectId/ideas/:ideaId`
+  - query: `limit?`, `offset?`
+  - response: `{ ideas, limit, offset }`
+- `PATCH /v1/ideas/:id`
+  - body: `{ title?, rawText?, meta? }` (at least one field)
+  - response: `{ idea }`
+- `DELETE /v1/ideas/:id`
+  - response: `204 No Content`
 
 ## Playbook
 
 - `POST /v1/projects/:projectId/playbook`
-  - body: `{ text }` (text/markdown)
-  - server chunks + embeds (pgvector) using `text-embedding-3-small`
+  - body: `{ title, content }` (markdown)
+  - response: `{ playbook, chunksInserted, embeddings: { status, errorType? } }`
 - `GET /v1/projects/:projectId/playbook` (status/chunks summary)
-- Retrieval endpoint exists server-side for RAG (used internally and optionally exposed).
+  - response: `{ playbook, chunks }` where `playbook.content_markdown` is present
+- `POST /v1/projects/:projectId/playbook:search`
+  - body: `{ query, topK?, includeText? }`
+  - response: `{ query, topK, results: [{ chunkId, chunkIndex, title, score, text? }] }`
 
 ## Runs (Scoring)
 

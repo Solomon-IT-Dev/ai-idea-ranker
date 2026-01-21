@@ -39,7 +39,7 @@ Implementation:
 3. **Project Detail** (`/projects/:projectId`)
    - Tabs:
      - Ideas (import/edit/delete)
-     - Playbook (upload)
+     - Playbook (upload + search)
      - Runs (execute + history)
      - Artifacts (generate + versions)
 

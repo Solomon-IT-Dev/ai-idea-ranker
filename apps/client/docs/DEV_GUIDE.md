@@ -93,6 +93,10 @@ Implement in `src/shared/api/http.ts`:
   - `{ status, errorType, message, requestId, debug? }`
 - throws a typed `ApiError` for React Query to handle
 
+Important:
+- For JSON requests, use `apiFetch(path, { method, json: {...} })`. This is what sets `content-type: application/json`.
+- Do not pass JSON as `body` directly; otherwise `req.body` may be `undefined` on the server and you'll get validation errors like “expected object, received undefined”.
+
 ### React Query
 - Use stable query keys (`['projects']`, `['project', projectId]`, etc.)
 - Invalidate after mutations
@@ -120,6 +124,9 @@ Use `@microsoft/fetch-event-source` in `src/shared/api/sse.ts`:
   - error state (toast + inline message)
 - Use `sonner` to toast success/errors.
 - Render artifacts markdown via `react-markdown` + `remark-gfm`.
+
+### react-hook-form + shadcn wrappers
+- Any shared inputs used with `react-hook-form` `register()` must forward refs (`React.forwardRef`) and pass through standard props. Otherwise `setValue()` / reset / focus may not update the DOM.
 
 ## v0 by Vercel
 
