@@ -31,6 +31,7 @@ Set these in Railway (no `.env` files in production):
 ### Current deployment
 - Base URL: `https://appsserver-production-d740.up.railway.app`
 - Healthcheck: `https://appsserver-production-d740.up.railway.app/health`
+- Swagger UI: `https://appsserver-production-d740.up.railway.app/docs`
 
 ## Client → Vercel
 
@@ -53,3 +54,6 @@ Set these in Vercel:
 
 ### Notes
 - `VITE_*` vars are embedded at build time. After changing them, redeploy.
+
+### Current deployment
+- App URL: `https://ai-idea-ranker.vercel.app/`

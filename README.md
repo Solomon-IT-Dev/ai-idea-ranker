@@ -128,6 +128,8 @@ curl -i http://localhost:8080/health
 
 ### Current deployments
 - Server (Railway): `https://appsserver-production-d740.up.railway.app` (health: `/health`)
+- Server Swagger UI: `https://appsserver-production-d740.up.railway.app/docs`
+- Client (Vercel): `https://ai-idea-ranker.vercel.app/`
 
 ---
 
