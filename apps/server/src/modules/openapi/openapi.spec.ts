@@ -15,12 +15,12 @@ export const openapiSpec = {
   },
   servers: [
     {
-      url: 'http://localhost:8080',
-      description: 'Local server',
-    },
-    {
       url: 'https://appsserver-production-d740.up.railway.app',
       description: 'Production server (Railway)',
+    },
+    {
+      url: 'http://localhost:8080',
+      description: 'Local server',
     },
   ],
   tags: [
@@ -42,7 +42,8 @@ export const openapiSpec = {
     },
     headers: {
       XRequestId: {
-        description: 'Correlation id for this request (also included in error bodies as `requestId`).',
+        description:
+          'Correlation id for this request (also included in error bodies as `requestId`).',
         schema: { type: 'string', format: 'uuid' },
       },
     },
@@ -206,15 +207,7 @@ export const openapiSpec = {
           meta: { type: 'object', additionalProperties: true },
           created_at: { type: 'string', format: 'date-time' },
         },
-        required: [
-          'id',
-          'project_id',
-          'owner_id',
-          'title',
-          'raw_text',
-          'meta',
-          'created_at',
-        ],
+        required: ['id', 'project_id', 'owner_id', 'title', 'raw_text', 'meta', 'created_at'],
       },
       Playbook: {
         type: 'object',
@@ -391,7 +384,9 @@ export const openapiSpec = {
         responses: {
           '200': {
             description: 'OK',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthMeResponse' } } },
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/AuthMeResponse' } },
+            },
           },
           '401': { $ref: '#/components/responses/Unauthorized' },
         },
@@ -550,9 +545,24 @@ export const openapiSpec = {
         summary: 'List ideas in a project',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-          { name: 'limit', in: 'query', required: false, schema: { type: 'integer', default: 50, maximum: 200 } },
-          { name: 'offset', in: 'query', required: false, schema: { type: 'integer', default: 0, minimum: 0 } },
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 50, maximum: 200 },
+          },
+          {
+            name: 'offset',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 0, minimum: 0 },
+          },
         ],
         responses: {
           '200': {
@@ -583,7 +593,9 @@ export const openapiSpec = {
         tags: ['Ideas'],
         summary: 'Update idea',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -605,7 +617,11 @@ export const openapiSpec = {
             description: 'OK',
             content: {
               'application/json': {
-                schema: { type: 'object', properties: { idea: { $ref: '#/components/schemas/Idea' } }, required: ['idea'] },
+                schema: {
+                  type: 'object',
+                  properties: { idea: { $ref: '#/components/schemas/Idea' } },
+                  required: ['idea'],
+                },
               },
             },
           },
@@ -619,7 +635,9 @@ export const openapiSpec = {
         tags: ['Ideas'],
         summary: 'Delete idea',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        ],
         responses: {
           '204': { description: 'No Content' },
           '401': { $ref: '#/components/responses/Unauthorized' },
@@ -633,7 +651,14 @@ export const openapiSpec = {
         tags: ['Playbook'],
         summary: 'Upsert playbook',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -683,7 +708,14 @@ export const openapiSpec = {
         tags: ['Playbook'],
         summary: 'Get playbook',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
         responses: {
           '200': {
             description: 'OK',
@@ -692,8 +724,13 @@ export const openapiSpec = {
                 schema: {
                   type: 'object',
                   properties: {
-                    playbook: { anyOf: [{ $ref: '#/components/schemas/Playbook' }, { type: 'null' }] },
-                    chunks: { type: 'array', items: { $ref: '#/components/schemas/PlaybookChunk' } },
+                    playbook: {
+                      anyOf: [{ $ref: '#/components/schemas/Playbook' }, { type: 'null' }],
+                    },
+                    chunks: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/PlaybookChunk' },
+                    },
                   },
                   required: ['playbook', 'chunks'],
                 },
@@ -711,7 +748,14 @@ export const openapiSpec = {
         tags: ['Playbook'],
         summary: 'Semantic search in playbook chunks',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -773,7 +817,14 @@ export const openapiSpec = {
         tags: ['Runs'],
         summary: 'List runs for a project',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
         responses: {
           '200': {
             description: 'OK',
@@ -802,7 +853,14 @@ export const openapiSpec = {
         tags: ['Runs'],
         summary: 'Create scoring run (sync)',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -856,7 +914,14 @@ export const openapiSpec = {
         tags: ['Runs'],
         summary: 'Create scoring run (async)',
         security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+        parameters: [
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
         requestBody: { $ref: '#/paths/~1v1~1projects~1{projectId}~1runs/post/requestBody' },
         responses: {
           '202': {
@@ -885,7 +950,12 @@ export const openapiSpec = {
         summary: 'Get run with scores',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
           { name: 'runId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         responses: {
@@ -916,7 +986,12 @@ export const openapiSpec = {
         summary: 'SSE stream for run progress',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
           { name: 'runId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         responses: {
@@ -928,7 +1003,7 @@ export const openapiSpec = {
                 examples: {
                   event: {
                     summary: 'Example SSE event',
-                    value: 'event: run.started\\ndata: {\"runId\":\"<uuid>\",\"projectId\":\"<uuid>\"}\\n\\n',
+                    value: 'event: run.started\ndata: {"runId":"<uuid>","projectId":"<uuid>"}\n\n',
                   },
                 },
               },
@@ -946,7 +1021,12 @@ export const openapiSpec = {
         summary: 'Generate artifacts for a run',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
           { name: 'runId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         requestBody: {
@@ -1000,7 +1080,12 @@ export const openapiSpec = {
         summary: 'Get latest artifacts for a run',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
           { name: 'runId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         responses: {
@@ -1015,8 +1100,12 @@ export const openapiSpec = {
                     artifacts: {
                       type: 'object',
                       properties: {
-                        plan: { anyOf: [{ $ref: '#/components/schemas/Artifact' }, { type: 'null' }] },
-                        experimentCard: { anyOf: [{ $ref: '#/components/schemas/Artifact' }, { type: 'null' }] },
+                        plan: {
+                          anyOf: [{ $ref: '#/components/schemas/Artifact' }, { type: 'null' }],
+                        },
+                        experimentCard: {
+                          anyOf: [{ $ref: '#/components/schemas/Artifact' }, { type: 'null' }],
+                        },
                       },
                       required: ['plan', 'experimentCard'],
                     },
@@ -1038,7 +1127,12 @@ export const openapiSpec = {
         summary: 'List artifacts for a run',
         security: [{ BearerAuth: [] }],
         parameters: [
-          { name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          {
+            name: 'projectId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
           { name: 'runId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         responses: {
@@ -1057,8 +1151,14 @@ export const openapiSpec = {
                     byType: {
                       type: 'object',
                       properties: {
-                        plan_30_60_90: { type: 'array', items: { $ref: '#/components/schemas/Artifact' } },
-                        experiment_card: { type: 'array', items: { $ref: '#/components/schemas/Artifact' } },
+                        plan_30_60_90: {
+                          type: 'array',
+                          items: { $ref: '#/components/schemas/Artifact' },
+                        },
+                        experiment_card: {
+                          type: 'array',
+                          items: { $ref: '#/components/schemas/Artifact' },
+                        },
                       },
                       required: ['plan_30_60_90', 'experiment_card'],
                     },
