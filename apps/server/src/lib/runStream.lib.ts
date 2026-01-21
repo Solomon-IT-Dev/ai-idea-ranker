@@ -2,6 +2,8 @@ import type { SseClient } from '../types/stream.types.js'
 import type { Response } from 'express'
 
 const clientsByRunId = new Map<string, Map<string, SseClient>>()
+const eventsByRunId = new Map<string, Array<{ event: string; data: unknown; ts: number }>>()
+const MAX_BUFFERED_EVENTS = 200
 
 function nowId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -14,6 +16,15 @@ function writeSse(res: Response, event: string, data: unknown) {
 
 export function writeSseEvent(res: Response, event: string, data: unknown) {
   writeSse(res, event, data)
+}
+
+function bufferEvent(runId: string, event: string, data: unknown) {
+  const list = eventsByRunId.get(runId) ?? []
+  list.push({ event, data, ts: Date.now() })
+  if (list.length > MAX_BUFFERED_EVENTS) {
+    list.splice(0, list.length - MAX_BUFFERED_EVENTS)
+  }
+  eventsByRunId.set(runId, list)
 }
 
 /**
@@ -43,6 +54,14 @@ export function subscribeToRunStream(runId: string, res: Response) {
 
   writeSse(res, 'stream.open', { runId })
 
+  // Replay buffered events (if the run started before the client subscribed).
+  const buffered = eventsByRunId.get(runId)
+  if (buffered && buffered.length > 0) {
+    for (const e of buffered) {
+      writeSse(res, e.event, e.data)
+    }
+  }
+
   res.on('close', () => {
     clearInterval(keepAlive)
 
@@ -59,6 +78,8 @@ export function subscribeToRunStream(runId: string, res: Response) {
  * No persistence (in-memory only) — enough for MVP.
  */
 export function publishRunEvent(runId: string, event: string, data: unknown) {
+  bufferEvent(runId, event, data)
+
   const clients = clientsByRunId.get(runId)
   if (!clients) return
 
@@ -80,4 +101,5 @@ export function closeRunStream(runId: string) {
   }
 
   clientsByRunId.delete(runId)
+  eventsByRunId.delete(runId)
 }

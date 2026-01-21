@@ -8,6 +8,7 @@ import { artifactKeys, useGenerateArtifactsMutation } from '@/entities/artifact/
 import { runKeys, useRun } from '@/entities/run/api/runs.queries'
 import { useRunStream } from '@/features/runStream/model/runStream.hooks'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { ErrorState } from '@/shared/ui/error-state'
@@ -234,9 +235,9 @@ export function RunDetailsPage() {
             </Button>
           </div>
 
-          <div className="mt-3 max-h-64 overflow-auto rounded-md border p-3 text-xs">
+          <div className="mt-3 max-h-64 overflow-auto rounded-md border p-3">
             {stream.events.length === 0 ? (
-              <div className="text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {run?.status === 'running' && !shouldStream
                   ? 'Stream stopped (the run continues on the server).'
                   : run?.status === 'completed'
@@ -246,16 +247,7 @@ export function RunDetailsPage() {
                       : 'No events yet.'}
               </div>
             ) : (
-              <div className="space-y-2">
-                {stream.events.map((e, idx) => (
-                  <div key={idx}>
-                    <div className="font-medium">{e.type}</div>
-                    <pre className="whitespace-pre-wrap text-muted-foreground">
-                      {JSON.stringify(e.data, null, 2)}
-                    </pre>
-                  </div>
-                ))}
-              </div>
+              <ProgressEventsList events={stream.events} />
             )}
           </div>
         </Card>
@@ -340,6 +332,102 @@ export function RunDetailsPage() {
           </div>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function ProgressEventsList({ events }: { events: Array<{ type: string; data: unknown }> }) {
+  function format(e: { type: string; data: unknown }): {
+    title: string
+    detail?: string
+    badge?: { text: string; variant?: 'default' | 'secondary' | 'outline' | 'destructive' }
+  } {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d: any = e.data
+
+    if (e.type === 'stream.open') {
+      return { title: 'Live stream connected', detail: `runId: ${d?.runId ?? ''}`, badge: { text: 'SSE', variant: 'outline' } }
+    }
+
+    if (e.type === 'run.snapshot') {
+      return {
+        title: 'Run status snapshot',
+        detail: `status: ${d?.status ?? 'unknown'}`,
+        badge: { text: 'snapshot', variant: 'secondary' },
+      }
+    }
+
+    if (e.type === 'run.started') {
+      return { title: 'Run started', badge: { text: 'running', variant: 'default' } }
+    }
+
+    if (e.type === 'plan.progress') {
+      const stage = d?.stage ? String(d.stage) : 'progress'
+      const message = d?.message ? String(d.message) : ''
+      return {
+        title: message || 'In progress…',
+        detail: stage !== 'progress' ? `stage: ${stage}` : undefined,
+        badge: { text: stage, variant: 'outline' },
+      }
+    }
+
+    if (e.type === 'idea.scored') {
+      const ideaId = d?.ideaId ? String(d.ideaId) : ''
+      const overall = typeof d?.overall === 'number' ? Math.round(d.overall) : null
+      return {
+        title: 'Idea scored',
+        detail: `${ideaId ? `ideaId: ${ideaId.slice(0, 8)}…` : ''}${overall != null ? ` · overall: ${overall}` : ''}`,
+        badge: { text: 'score', variant: 'secondary' },
+      }
+    }
+
+    if (e.type === 'run.completed') {
+      return { title: 'Run completed', badge: { text: 'completed', variant: 'default' } }
+    }
+
+    if (e.type === 'run.failed') {
+      return {
+        title: 'Run failed',
+        detail: d?.message ? String(d.message) : undefined,
+        badge: { text: d?.errorType ? String(d.errorType) : 'failed', variant: 'destructive' },
+      }
+    }
+
+    // Fallback (kept for debugging)
+    return {
+      title: e.type === 'unknown' ? 'Other event' : e.type,
+      detail:
+        e.data == null
+          ? undefined
+          : typeof e.data === 'string'
+            ? e.data
+            : JSON.stringify(e.data, null, 2),
+      badge: { text: 'debug', variant: 'outline' },
+    }
+  }
+
+  return (
+    <div className="space-y-2 text-xs">
+      {events.map((e, idx) => {
+        const f = format(e)
+        return (
+          <div key={idx} className="rounded-md border p-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <div className="font-medium">{f.title}</div>
+                {f.detail ? (
+                  <pre className="whitespace-pre-wrap text-muted-foreground">{f.detail}</pre>
+                ) : null}
+              </div>
+              {f.badge ? (
+                <Badge variant={f.badge.variant ?? 'default'} className="shrink-0">
+                  {f.badge.text}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

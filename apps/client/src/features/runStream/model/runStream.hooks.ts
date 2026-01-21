@@ -85,8 +85,18 @@ export function useRunStream(input: { projectId: string; runId: string; enabled:
           onmessage: msg => {
             if (stopped) return
 
+            // Ignore keep-alive comments / empty frames.
+            if (!msg.event && (!msg.data || msg.data.trim() === '')) {
+              return
+            }
+
             const eventName = msg.event || 'message'
             const parsed = safeParseJson(msg.data)
+
+            // Some proxies/servers may emit empty "message" events; ignore them.
+            if (eventName === 'message' && (parsed === '' || parsed == null)) {
+              return
+            }
 
             const e: RunStreamEvent = mapToTypedEvent(eventName, parsed)
             setEvents(prev => [...prev, e])
