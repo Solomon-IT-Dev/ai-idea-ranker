@@ -1,5 +1,10 @@
 export type ArtifactType = 'plan_30_60_90' | 'experiment_card'
 
+export type VersionsByType = {
+  plan_30_60_90: Artifact[]
+  experiment_card: Artifact[]
+}
+
 export type Artifact = {
   id: string
   run_id: string
@@ -14,10 +19,7 @@ export type Artifact = {
 export type ListArtifactsResponse = {
   runId: string
   artifacts: Artifact[]
-  byType?: {
-    plan_30_60_90: Artifact[]
-    experiment_card: Artifact[]
-  }
+  byType?: VersionsByType
 }
 
 export type LatestArtifactsResponse = {

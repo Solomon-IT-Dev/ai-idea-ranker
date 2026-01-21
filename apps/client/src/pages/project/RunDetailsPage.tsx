@@ -52,7 +52,11 @@ export function RunDetailsPage() {
     if (t === 'run.completed' || t === 'run.failed') {
       void runQuery.refetch()
       if (t === 'run.failed') {
-        toast.error(isGeneratingArtifacts ? 'Artifacts generation failed. Check errors.' : 'Run failed. Check errors.')
+        toast.error(
+          isGeneratingArtifacts
+            ? 'Artifacts generation failed. Check errors.'
+            : 'Run failed. Check errors.'
+        )
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,6 +129,14 @@ export function RunDetailsPage() {
               disabled={runQuery.isFetching}
             >
               Refresh
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/projects/${pid}/artifacts?runId=${rid}`)}
+              disabled={!pid || !rid}
+            >
+              Open Artifacts tab
             </Button>
 
             <Button

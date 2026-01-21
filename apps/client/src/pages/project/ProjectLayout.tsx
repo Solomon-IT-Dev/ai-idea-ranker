@@ -32,7 +32,10 @@ export function ProjectLayout() {
   function onTabChange(value: string) {
     if (!projectId) return
     const v = value as TabValue
-    navigate(`/projects/${projectId}/${v}`)
+    navigate({
+      pathname: `/projects/${projectId}/${v}`,
+      search: v === 'artifacts' ? location.search : '',
+    })
   }
 
   function goBack() {

@@ -1,21 +1,20 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 
 import { useArtifactsLatest, useArtifactsList } from '@/entities/artifact/api/artifacts.queries'
-import type { Artifact, ArtifactType } from '@/entities/artifact/types/artifact'
+import type { Artifact, ArtifactType, VersionsByType } from '@/entities/artifact/types/artifact'
 import { useRuns } from '@/entities/run/api/runs.queries'
+import { getArtifactsLastRunId, setArtifactsLastRunId } from '@/shared/lib/storage'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { Separator } from '@/shared/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 
-function groupByType(artifacts: Artifact[]) {
+function groupByType(artifacts: Artifact[]): VersionsByType {
   return artifacts.reduce(
     (acc, a) => {
       acc[a.type].push(a)
@@ -25,11 +24,33 @@ function groupByType(artifacts: Artifact[]) {
   )
 }
 
-function ArtifactMarkdown({ title, md }: { title: string; md: string }) {
+function ArtifactMarkdown({
+  title,
+  md,
+  variant = 'default',
+}: {
+  title: string
+  md: string
+  variant?: 'default' | 'latest' | 'selected'
+}) {
+  const border =
+    variant === 'latest'
+      ? 'border-primary/40'
+      : variant === 'selected'
+        ? 'border-ring'
+        : 'border-border'
+
   return (
-    <Card className="p-4">
+    <Card className={`p-4 border ${border}`}>
       <div className="space-y-3">
-        <div className="text-sm font-semibold">{title}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold">{title}</div>
+          {variant === 'latest' ? (
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">Latest</span>
+          ) : variant === 'selected' ? (
+            <span className="rounded bg-muted px-2 py-0.5 text-xs">Selected</span>
+          ) : null}
+        </div>
         <Separator />
         <article className="prose prose-zinc max-w-none dark:prose-invert">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{md}</ReactMarkdown>
@@ -42,10 +63,12 @@ function ArtifactMarkdown({ title, md }: { title: string; md: string }) {
 function VersionsList({
   artifacts,
   selectedId,
+  latestId,
   onSelect,
 }: {
   artifacts: Artifact[]
   selectedId: string | null
+  latestId: string | null
   onSelect: (id: string) => void
 }) {
   const sorted = useMemo(
@@ -60,19 +83,34 @@ function VersionsList({
   return (
     <div className="space-y-2">
       {sorted.map(a => {
-        const active = a.id === selectedId
+        const isSelected = a.id === selectedId
+        const isLatest = a.id === latestId
+
+        const classes = [
+          'w-full rounded-md border p-3 text-left hover:bg-muted transition-colors',
+          isSelected ? 'border-ring' : '',
+          !isSelected && isLatest ? 'border-primary/40' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+
         return (
-          <button
-            key={a.id}
-            className={[
-              'w-full rounded-md border p-3 text-left hover:bg-muted',
-              active ? 'border-primary' : '',
-            ].join(' ')}
-            onClick={() => onSelect(a.id)}
-          >
+          <button type="button" key={a.id} className={classes} onClick={() => onSelect(a.id)}>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <div className="text-sm font-medium">{a.type}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-medium">
+                    {a.type === 'plan_30_60_90' ? 'Plan' : 'Experiment Card'}
+                  </div>
+                  {isLatest ? (
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                      Latest
+                    </span>
+                  ) : null}
+                  {isSelected ? (
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">Selected</span>
+                  ) : null}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {new Date(a.created_at).toLocaleString()}
                 </div>
@@ -88,7 +126,12 @@ function VersionsList({
 
 export function ProjectArtifactsTab() {
   const { projectId } = useParams()
-  const [runId, setRunId] = useState<string>('')
+  const pid = projectId ?? ''
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlRunId = searchParams.get('runId') ?? ''
+
+  const [runId, setRunId] = useState<string>(urlRunId)
   const [selectedVersionByType, setSelectedVersionByType] = useState<
     Record<ArtifactType, string | null>
   >({
@@ -96,24 +139,83 @@ export function ProjectArtifactsTab() {
     experiment_card: null,
   })
 
-  if (!projectId) {
-    return (
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground">Missing projectId.</p>
-      </Card>
+  const runsQuery = useRuns(pid)
+  const runs = useMemo(() => {
+    return (runsQuery.data?.runs ?? [])
+      .slice()
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+  }, [runsQuery.data?.runs])
+
+  const latestQuery = useArtifactsLatest(pid, runId, Boolean(pid && runId))
+  const listQuery = useArtifactsList(pid, runId, Boolean(pid && runId))
+
+  // If URL changes externally, sync state.
+  useEffect(() => {
+    if (!pid) return
+    if (!urlRunId) return
+    if (urlRunId === runId) return
+    setRunId(urlRunId)
+    setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
+    setArtifactsLastRunId(pid, urlRunId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pid, urlRunId])
+
+  // Auto-select: URL -> localStorage -> latest run.
+  useEffect(() => {
+    if (!pid) return
+    if (runId) return
+    if (runsQuery.isLoading) return
+    if (runs.length === 0) return
+
+    const stored = getArtifactsLastRunId(pid)
+    const candidate = stored && runs.some(r => r.id === stored) ? stored : runs[0].id
+    setRunId(candidate)
+    setArtifactsLastRunId(pid, candidate)
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.set('runId', candidate)
+        return next
+      },
+      { replace: true }
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pid, runId, runsQuery.isLoading, runs])
+
+  function onPickRun(value: string) {
+    setRunId(value)
+    setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
+    if (pid) setArtifactsLastRunId(pid, value)
+
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.set('runId', value)
+        return next
+      },
+      { replace: true }
     )
   }
 
-  // Runs list for selector
-  const runsQuery = useRuns(projectId)
+  function onSelectVersion(type: ArtifactType, id: string) {
+    setSelectedVersionByType(prev => ({ ...prev, [type]: id }))
+  }
 
-  const latestQuery = useArtifactsLatest(projectId, runId, Boolean(runId))
-  const listQuery = useArtifactsList(projectId, runId, Boolean(runId))
+  function onCopy(md?: string | null) {
+    if (!md) return
+    navigator.clipboard
+      .writeText(md)
+      .then(() => toast.success('Copied'))
+      .catch(() => toast.error('Copy failed'))
+  }
 
-  const byType = useMemo(() => {
+  const latestPlan = latestQuery.data?.artifacts?.plan ?? null
+  const latestCard = latestQuery.data?.artifacts?.experimentCard ?? null
+
+  const byType: VersionsByType = useMemo(() => {
     const artifacts = listQuery.data?.artifacts ?? []
     const serverByType = listQuery.data?.byType
-    if (serverByType) return serverByType
+    if (serverByType) return serverByType as VersionsByType
     return groupByType(artifacts)
   }, [listQuery.data])
 
@@ -129,79 +231,73 @@ export function ProjectArtifactsTab() {
     return byType.experiment_card.find(a => a.id === id) ?? null
   }, [byType.experiment_card, selectedVersionByType.experiment_card])
 
-  const latestPlan = latestQuery.data?.artifacts?.plan ?? null
-  const latestCard = latestQuery.data?.artifacts?.experimentCard ?? null
+  const latestError =
+    latestQuery.error instanceof Error
+      ? latestQuery.error.message
+      : 'Failed to load latest artifacts'
+  const listError =
+    listQuery.error instanceof Error ? listQuery.error.message : 'Failed to load versions'
 
-  function onPickRun(value: string) {
-    setRunId(value)
-    // Reset selected versions when switching run
-    setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
-  }
-
-  function onSelectVersion(type: ArtifactType, id: string) {
-    setSelectedVersionByType(prev => ({ ...prev, [type]: id }))
-  }
-
-  function onCopy(md?: string | null) {
-    if (!md) return
-    navigator.clipboard
-      .writeText(md)
-      .then(() => toast.success('Copied'))
-      .catch(() => toast.error('Copy failed'))
-  }
+  const latestPlanId = latestPlan?.id ?? null
+  const latestCardId = latestCard?.id ?? null
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <div className="space-y-3">
-          <div>
-            <h2 className="text-base font-semibold">Artifacts</h2>
-            <p className="text-sm text-muted-foreground">
-              View latest artifacts and all historical versions for a run.
-            </p>
-          </div>
+      {!pid ? (
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Missing projectId.</p>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold">Artifacts</h2>
+              <p className="text-sm text-muted-foreground">
+                View latest artifacts and compare them with any historical version.
+              </p>
+            </div>
 
-          <Separator />
+            <Separator />
 
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="w-full md:w-96 md:flex-1">
-              <div className="text-sm font-medium mb-1">Run</div>
-              <Select value={runId} onValueChange={onPickRun}>
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={runsQuery.isLoading ? 'Loading runs…' : 'Select a run'}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {(runsQuery.data?.runs ?? [])
-                    .slice()
-                    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-                    .map(r => (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-full md:w-96 flex-grow">
+                <div className="mb-1 text-sm font-medium">Run</div>
+                <Select value={runId} onValueChange={onPickRun} disabled={!pid}>
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={runsQuery.isLoading ? 'Loading runs…' : 'Select a run'}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {runs.map(r => (
                       <SelectItem key={r.id} value={r.id}>
                         {new Date(r.created_at).toLocaleString()} · {r.status} · {r.id.slice(0, 8)}…
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void latestQuery.refetch()
+                  void listQuery.refetch()
+                }}
+                disabled={!runId}
+              >
+                Refresh
+              </Button>
             </div>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                void latestQuery.refetch()
-                void listQuery.refetch()
-              }}
-              disabled={!runId}
-            >
-              Refresh
-            </Button>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
-      {!runId ? (
+      {!pid || !runId ? (
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Select a run to view artifacts.</p>
+          <p className="text-sm text-muted-foreground">
+            {pid ? 'Select a run to view artifacts.' : 'Select a project to view artifacts.'}
+          </p>
         </Card>
       ) : (
         <Tabs defaultValue="latest">
@@ -213,84 +309,81 @@ export function ProjectArtifactsTab() {
           </Card>
 
           <TabsContent value="latest" className="space-y-4">
-            {latestQuery.isLoading && (
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Loading latest…</p>
-              </Card>
-            )}
-
-            {latestQuery.isError && (
-              <Card className="p-4">
-                <p className="text-sm text-destructive">
-                  {(latestQuery.error as any)?.message ?? 'Failed to load latest artifacts'}
-                </p>
-              </Card>
-            )}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">30-60-90 Plan</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onCopy(latestPlan?.content_markdown ?? null)}
-                    disabled={!latestPlan}
-                  >
-                    Copy
-                  </Button>
-                </div>
-                {latestPlan ? (
-                  <ArtifactMarkdown title="Latest plan" md={latestPlan.content_markdown} />
-                ) : (
-                  <Card className="p-4">
-                    <p className="text-sm text-muted-foreground">No plan artifact yet.</p>
-                  </Card>
-                )}
+            {latestQuery.isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-72 animate-pulse rounded-md bg-muted" />
+                <div className="h-72 animate-pulse rounded-md bg-muted" />
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">Experiment Card</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onCopy(latestCard?.content_markdown ?? null)}
-                    disabled={!latestCard}
-                  >
-                    Copy
-                  </Button>
+            ) : latestQuery.isError ? (
+              <Card className="p-4">
+                <p className="text-sm text-destructive">{latestError}</p>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">30-60-90 Plan</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onCopy(latestPlan?.content_markdown ?? null)}
+                      disabled={!latestPlan}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  {latestPlan ? (
+                    <ArtifactMarkdown
+                      title="Latest plan"
+                      md={latestPlan.content_markdown}
+                      variant="latest"
+                    />
+                  ) : (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">No plan artifact yet.</p>
+                    </Card>
+                  )}
                 </div>
-                {latestCard ? (
-                  <ArtifactMarkdown
-                    title="Latest experiment card"
-                    md={latestCard.content_markdown}
-                  />
-                ) : (
-                  <Card className="p-4">
-                    <p className="text-sm text-muted-foreground">No experiment card yet.</p>
-                  </Card>
-                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Experiment Card</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onCopy(latestCard?.content_markdown ?? null)}
+                      disabled={!latestCard}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  {latestCard ? (
+                    <ArtifactMarkdown
+                      title="Latest experiment card"
+                      md={latestCard.content_markdown}
+                      variant="latest"
+                    />
+                  ) : (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">No experiment card yet.</p>
+                    </Card>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="versions" className="space-y-4">
-            {listQuery.isLoading && (
+            {listQuery.isLoading ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-64 animate-pulse rounded-md bg-muted" />
+                <div className="h-64 animate-pulse rounded-md bg-muted" />
+              </div>
+            ) : listQuery.isError ? (
               <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Loading versions…</p>
+                <p className="text-sm text-destructive">{listError}</p>
               </Card>
-            )}
-
-            {listQuery.isError && (
-              <Card className="p-4">
-                <p className="text-sm text-destructive">
-                  {(listQuery.error as any)?.message ?? 'Failed to load versions'}
-                </p>
-              </Card>
-            )}
-
-            {!listQuery.isLoading && !listQuery.isError && (
+            ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <Card className="p-4">
                   <div className="space-y-3">
@@ -299,6 +392,7 @@ export function ProjectArtifactsTab() {
                     <VersionsList
                       artifacts={byType.plan_30_60_90}
                       selectedId={selectedVersionByType.plan_30_60_90}
+                      latestId={latestPlanId}
                       onSelect={id => onSelectVersion('plan_30_60_90', id)}
                     />
                   </div>
@@ -311,6 +405,7 @@ export function ProjectArtifactsTab() {
                     <VersionsList
                       artifacts={byType.experiment_card}
                       selectedId={selectedVersionByType.experiment_card}
+                      latestId={latestCardId}
                       onSelect={id => onSelectVersion('experiment_card', id)}
                     />
                   </div>
@@ -318,57 +413,97 @@ export function ProjectArtifactsTab() {
               </div>
             )}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">Selected plan</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onCopy(selectedPlan?.content_markdown ?? null)}
-                    disabled={!selectedPlan}
-                  >
-                    Copy
-                  </Button>
-                </div>
-                {selectedPlan ? (
-                  <ArtifactMarkdown
-                    title={`Plan version — ${selectedPlan.id.slice(0, 8)}…`}
-                    md={selectedPlan.content_markdown}
-                  />
-                ) : (
-                  <Card className="p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Select a plan version to preview.
-                    </p>
-                  </Card>
-                )}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Latest vs Selected</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
+                  }
+                  disabled={!selectedPlan && !selectedCard}
+                >
+                  Clear selection
+                </Button>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold">Selected experiment card</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onCopy(selectedCard?.content_markdown ?? null)}
-                    disabled={!selectedCard}
-                  >
-                    Copy
-                  </Button>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Plan</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onCopy(selectedPlan?.content_markdown ?? null)}
+                      disabled={!selectedPlan}
+                    >
+                      Copy selected
+                    </Button>
+                  </div>
+                  {latestPlan ? (
+                    <ArtifactMarkdown
+                      title="Latest"
+                      md={latestPlan.content_markdown}
+                      variant="latest"
+                    />
+                  ) : (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">No latest plan yet.</p>
+                    </Card>
+                  )}
+                  {selectedPlan ? (
+                    <ArtifactMarkdown
+                      title="Selected"
+                      md={selectedPlan.content_markdown}
+                      variant="selected"
+                    />
+                  ) : (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">
+                        Select a plan version to compare.
+                      </p>
+                    </Card>
+                  )}
                 </div>
-                {selectedCard ? (
-                  <ArtifactMarkdown
-                    title={`Experiment card version — ${selectedCard.id.slice(0, 8)}…`}
-                    md={selectedCard.content_markdown}
-                  />
-                ) : (
-                  <Card className="p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Select an experiment card version to preview.
-                    </p>
-                  </Card>
-                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Experiment Card</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onCopy(selectedCard?.content_markdown ?? null)}
+                      disabled={!selectedCard}
+                    >
+                      Copy selected
+                    </Button>
+                  </div>
+                  {latestCard ? (
+                    <ArtifactMarkdown
+                      title="Latest"
+                      md={latestCard.content_markdown}
+                      variant="latest"
+                    />
+                  ) : (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">No latest card yet.</p>
+                    </Card>
+                  )}
+                  {selectedCard ? (
+                    <ArtifactMarkdown
+                      title="Selected"
+                      md={selectedCard.content_markdown}
+                      variant="selected"
+                    />
+                  ) : (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">
+                        Select a card version to compare.
+                      </p>
+                    </Card>
+                  )}
+                </div>
               </div>
             </div>
           </TabsContent>
