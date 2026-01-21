@@ -1,7 +1,7 @@
 # Server Development Guide (`apps/server`)
 
-This document is the **source of truth** for how the server must be implemented.
-It is written to guide both humans and coding agents (e.g., OpenAI Codex).
+This document is the **source of truth** for how the server must be implemented. It is written to
+guide both humans and coding agents (e.g., OpenAI Codex).
 
 ---
 
@@ -9,27 +9,32 @@ It is written to guide both humans and coding agents (e.g., OpenAI Codex).
 
 When acting as a coding agent in this repository, follow these rules:
 
-1) **Implement in TypeScript only**. No JavaScript application logic.
-2) The server uses **ESM** (`"type": "module"`). In TypeScript files, use ESM imports and keep import paths compatible with ESM (`.../file.js` in source imports when applicable).
-3) Follow a **Nest.js-like layered structure** within Express:
+1. **Implement in TypeScript only**. No JavaScript application logic.
+2. The server uses **ESM** (`"type": "module"`). In TypeScript files, use ESM imports and keep
+   import paths compatible with ESM (`.../file.js` in source imports when applicable).
+3. Follow a **Nest.js-like layered structure** within Express:
    - routes are thin
    - controllers orchestrate request/response
    - services contain business logic
    - repos isolate persistence
    - validators use Zod
    - middlewares are cross-cutting concerns
-4) **Comments in code must be English only.**
-5) Keep a **single, centralized error handling** path (`AppError` + global error middleware).
-6) Enforce Supabase RLS with **Variant B** (request-scoped Supabase client using Anon Key + User JWT).
-7) Never log secrets. Authorization headers must be **redacted** from HTTP logs.
-8) Imports must be ordered (external first) and auto-fixed on save using `eslint-plugin-simple-import-sort`.
-9) If you are unsure about a dependency’s API or behavior, consult the **official documentation** for the exact versions listed below.
+4. **Comments in code must be English only.**
+5. Keep a **single, centralized error handling** path (`AppError` + global error middleware).
+6. Enforce Supabase RLS with **Variant B** (request-scoped Supabase client using Anon Key + User
+   JWT).
+7. Never log secrets. Authorization headers must be **redacted** from HTTP logs.
+8. Imports must be ordered (external first) and auto-fixed on save using
+   `eslint-plugin-simple-import-sort`.
+9. If you are unsure about a dependency’s API or behavior, consult the **official documentation**
+   for the exact versions listed below.
 
 ---
 
 ## 2) Dependency Versions (Exact)
 
 ### Root tooling
+
 - Node.js: **>= 20.0.0**
 - pnpm: **10.28.0**
 - TypeScript: **5.9.3**
@@ -39,6 +44,7 @@ When acting as a coding agent in this repository, follow these rules:
 - eslint-plugin-simple-import-sort: **12.1.1**
 
 ### Server runtime dependencies (`apps/server`)
+
 - express: **5.2.1**
 - @types/express: **5.0.6**
 - zod: **4.3.5**
@@ -58,6 +64,7 @@ When acting as a coding agent in this repository, follow these rules:
 ## 3) Code Style, Formatting, and Imports
 
 ### Prettier (authoritative settings)
+
 Use the following Prettier configuration (do not change unless explicitly requested):
 
 ```js
@@ -75,13 +82,14 @@ module.exports = {
 ```
 
 ### Import ordering
+
 Imports must be automatically sorted on save. The intended order is:
 
-1) Node built-ins
-2) Third-party external dependencies
-3) Internal absolute imports (within the app)
-4) Relative imports
-5) Type-only imports are grouped with their corresponding section
+1. Node built-ins
+2. Third-party external dependencies
+3. Internal absolute imports (within the app)
+4. Relative imports
+5. Type-only imports are grouped with their corresponding section
 
 Use `eslint-plugin-simple-import-sort` to enforce this.
 
@@ -90,6 +98,7 @@ Use `eslint-plugin-simple-import-sort` to enforce this.
 ## 4) High-Level Architecture (Nest-like in Express)
 
 ### Design goals
+
 - predictable patterns, low coupling
 - fast iteration without sacrificing correctness
 - security-aware defaults
@@ -132,23 +141,29 @@ Use `eslint-plugin-simple-import-sort` to enforce this.
 ## 5) Core Patterns
 
 ### 5.1 Routes must be thin
+
 Routes only:
+
 - mount middlewares
 - call `controller(handler)` wrapper
 
 No inline async functions with business logic inside routes.
 
 ### 5.2 Controller wrapper
+
 A wrapper such as `controller()` is used to:
+
 - support async controllers
 - forward errors to global error handler
 - keep route definitions clean
 
 ### 5.3 Validation
+
 - Validate request payloads with **Zod**.
 - Env variables are validated at startup by `env.config.ts`.
 
 ### 5.4 Error Handling
+
 - Operational errors: throw `AppError({ statusCode, errorType, message })`
 - Unknown errors: return `unknown_error` with a generic message
 - In non-production, the error handler may attach debug details for faster diagnosis.
@@ -156,12 +171,13 @@ A wrapper such as `controller()` is used to:
 ### 5.6 List endpoints convention
 
 For collection/list endpoints:
-- Return `200` with an empty array when there are no results (do **not** return
-  `404`).
-- Use a stable JSON shape (e.g. `{ projects: [] }`) so the client can render an
-  empty state without treating it as an error.
+
+- Return `200` with an empty array when there are no results (do **not** return `404`).
+- Use a stable JSON shape (e.g. `{ projects: [] }`) so the client can render an empty state without
+  treating it as an error.
 
 ### 5.5 Request correlation
+
 - Every request gets an `x-request-id` header.
 - Error responses must include `requestId`.
 
@@ -170,6 +186,7 @@ For collection/list endpoints:
 ## 6) Auth & DB (Supabase)
 
 ### 6.1 Auth: JWKS verification
+
 - Verify JWT using `jose` with Supabase JWKS endpoint:
   - `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`
 - Attach `req.userId = payload.sub`.
@@ -183,7 +200,9 @@ Authorization: Bearer <ACCESS_TOKEN>
 Do not use `Bearer:` (with a colon).
 
 ### 6.2 DB access: Variant B (mandatory)
+
 To enforce RLS:
+
 - Create a Supabase client per request using
   - `SUPABASE_ANON_KEY`
   - `Authorization: Bearer <user_jwt>` forwarded as a global header
@@ -191,6 +210,7 @@ To enforce RLS:
 This enables Postgres `auth.uid()` in RLS policies.
 
 ### 6.3 Admin client
+
 - `supabase.server.ts` uses `SUPABASE_SERVICE_ROLE_KEY`.
 - **Do not use** admin client for user-scoped reads/writes.
 - Only allowed for:
@@ -200,8 +220,7 @@ This enables Postgres `auth.uid()` in RLS policies.
 
 ### 6.4 DB schema (manual SQL)
 
-SQL schema changes are stored in `src/db/sql/` and are applied manually in the
-Supabase SQL editor.
+SQL schema changes are stored in `src/db/sql/` and are applied manually in the Supabase SQL editor.
 
 - Apply in order (once):
   - `src/db/sql/001_projects.sql`
@@ -210,8 +229,8 @@ Supabase SQL editor.
   - `src/db/sql/004_playbook_embeddings.sql`
   - `src/db/sql/005_runs.sql`
   - `src/db/sql/006_artifacts.sql`
-- Note: these files use `create policy ...` without `if not exists`. Re-running
-  them may fail unless you drop existing policies first.
+- Note: these files use `create policy ...` without `if not exists`. Re-running them may fail unless
+  you drop existing policies first.
 
 ---
 
@@ -236,6 +255,7 @@ Supabase SQL editor.
 ## 9) Graceful Shutdown
 
 The entrypoint (`index.ts`) must support graceful shutdown:
+
 - store the `Server` returned from `app.listen(...)`
 - close it on `SIGINT` / `SIGTERM`
 - keep shutdown idempotent
@@ -247,41 +267,49 @@ Closing DB pools is only relevant if a direct DB driver (pg pool, Prisma, etc.) 
 ## 10) Implemented API (current)
 
 ### Projects
+
 - `POST /v1/projects`
 - `GET /v1/projects/:id`
 
 ### Ideas
+
 - `POST /v1/projects/:projectId/ideas:import` — imports ideas from plain text/Markdown.
 - `GET /v1/projects/:projectId/ideas?limit=50&offset=0` — lists ideas in a project.
 - `PATCH /v1/ideas/:id` — updates `{ title?, rawText?, meta? }` (at least one field).
 - `DELETE /v1/ideas/:id`
 
-Ideas import parsing is deterministic and currently treats each non-empty line
-as an idea (common list prefixes are removed; Markdown headings are ignored;
-case-insensitive duplicates are removed).
+Ideas import parsing is deterministic and currently treats each non-empty line as an idea (common
+list prefixes are removed; Markdown headings are ignored; case-insensitive duplicates are removed).
 
 ### Playbook
+
 - `POST /v1/projects/:projectId/playbook` — upserts playbook markdown and rebuilds chunks.
 - `GET /v1/projects/:projectId/playbook` — returns `{ playbook, chunks }`.
-- `POST /v1/projects/:projectId/playbook:search` — semantic search over chunks (requires embeddings).
+- `POST /v1/projects/:projectId/playbook:search` — semantic search over chunks (requires
+  embeddings).
 
-Playbook semantic search uses pgvector + OpenAI embeddings and requires
-`OPENAI_API_KEY` to be configured.
+Playbook semantic search uses pgvector + OpenAI embeddings and requires `OPENAI_API_KEY` to be
+configured.
 
 ### Runs (AI scoring & ranking)
+
 - `POST /v1/projects/:projectId/runs` — creates an AI scoring run and stores `idea_scores`.
-- `POST /v1/projects/:projectId/runs:execute` — starts an async scoring run (use SSE to follow progress).
+- `POST /v1/projects/:projectId/runs:execute` — starts an async scoring run (use SSE to follow
+  progress).
 - `GET /v1/projects/:projectId/runs/:runId` — returns `{ run, scores }`.
 - `GET /v1/projects/:projectId/runs/:runId/stream` — server-sent events (SSE) for run progress.
 
 Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 
 ### Artifacts (30/60/90 + Experiment Card)
-- `POST /v1/projects/:projectId/runs/:runId/artifacts:generate` — generates artifacts for a completed run.
+
+- `POST /v1/projects/:projectId/runs/:runId/artifacts:generate` — generates artifacts for a
+  completed run.
 - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest` — returns latest stored artifacts.
 - `GET /v1/projects/:projectId/runs/:runId/artifacts` — returns all artifacts for the run.
 
 ### API Docs (OpenAPI / Swagger)
+
 - `GET /openapi.json` — OpenAPI 3.1 spec (JSON)
 - `GET /docs` — Swagger UI (loads `swagger-ui-dist` from a CDN)
 
@@ -290,7 +318,8 @@ Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 ## 10) Environment Variables
 
 ### Required
-- `NODE_ENV` = `development | test | production`
+
+- `NODE_ENV` = `development | staging | production`
 - `PORT` = number (local: 8080)
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
@@ -298,6 +327,7 @@ Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 - `OPENAI_API_KEY` (used later for AI milestones)
 
 ### Optional
+
 - `CLIENT_ORIGIN` (URL) — tighten CORS in production
 
 ---
@@ -305,16 +335,19 @@ Runs use OpenAI chat for scoring and use playbook retrieval for citations.
 ## 11) Running Locally
 
 Install:
+
 ```bash
 pnpm install
 ```
 
 Run server:
+
 ```bash
 pnpm dev:server
 ```
 
 Health:
+
 ```bash
 curl -i http://localhost:8080/health
 ```
@@ -325,11 +358,11 @@ curl -i http://localhost:8080/health
 
 Recommended: create a user via Supabase Dashboard and sign in with password using a small script.
 
-1) Supabase Dashboard → Authentication → Users → Add user (email + password).
-2) Add local variables:
+1. Supabase Dashboard → Authentication → Users → Add user (email + password).
+2. Add local variables:
    - `TEST_USER_EMAIL`
    - `TEST_USER_PASSWORD`
-3) Use a script under `apps/server/scripts/` to print `session.access_token`.
+3. Use a script under `apps/server/scripts/` to print `session.access_token`.
 
 That token is used as:
 

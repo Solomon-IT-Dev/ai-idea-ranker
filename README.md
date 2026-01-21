@@ -10,7 +10,9 @@ A small tool to help an R&D team:
 - generate one **Experiment Card** (problem, hypothesis, dataset, metrics, go/no-go)
 - include best-practice tips with **citations** from a short playbook (RAG)
 
-This repo currently focuses on the **server** (`apps/server`). The **client** will be added later and documented separately.
+This repo contains:
+- **server**: `apps/server` (Express API)
+- **client**: `apps/client` (Vite React SPA)
 
 ---
 
@@ -58,7 +60,7 @@ This repo currently focuses on the **server** (`apps/server`). The **client** wi
 - Supabase Postgres with real RLS enforcement via **Variant B**:
   - per-request Supabase client (Anon Key + User JWT)
 
-See `apps/server/src/docs/DEV_GUIDE.md` for the authoritative conventions.
+See `apps/server/docs/DEV_GUIDE.md` and `apps/client/docs/DEV_GUIDE.md` for the authoritative conventions.
 
 ---
 
@@ -98,7 +100,8 @@ pnpm install
 ```
 
 ### 2) Configure environment
-Create `apps/server/.env` (or your preferred local env setup). See `apps/server/src/docs/DEV_GUIDE.md` for exact variables.
+Create `apps/server/.env` (or your preferred local env setup). See `apps/server/docs/DEV_GUIDE.md` for exact variables.
+Create `apps/client/.env` for the client (see `apps/client/README.md`).
 
 ### 3) Run server
 ```bash
@@ -112,21 +115,13 @@ curl -i http://localhost:8080/health
 
 ---
 
-## Planned Client (not yet in repo)
-
-The planned client will be implemented separately and is expected to use:
-- Next.js (for React + server capabilities)
-- shadcn/ui
-- Vercel AI SDK (for streaming UX)
-
-AI provider is **OpenAI**.
-
----
-
 ## Documentation
 
-- `apps/server/src/docs/DEV_GUIDE.md` — server architecture, conventions, local development
-- `apps/server/src/docs/ROADMAP.md` — backend milestones to complete the MVP
+- `DEPLOYMENT.md` — Railway (server) + Vercel (client) deployment notes
+- `apps/server/docs/DEV_GUIDE.md` — server architecture, conventions, local development
+- `apps/server/docs/ROADMAP.md` — backend milestones to complete the MVP
+- `apps/client/docs/DEV_GUIDE.md` — client architecture + rules (FSD-lite)
+- `apps/client/docs/ROADMAP.md` — client milestones
 - API docs:
   - `GET /openapi.json` — OpenAPI spec
   - `GET /docs` — Swagger UI (loads assets from a CDN)
@@ -135,4 +130,4 @@ AI provider is **OpenAI**.
 
 ## Notes
 
-Root scripts currently point `dev:client` to the server as a placeholder. When the client is added, update it to `apps/client`.
+Monorepo scripts live in the root `package.json` (`pnpm dev:server`, `pnpm dev:client`).

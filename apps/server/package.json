@@ -3,7 +3,9 @@
   "description": "Server package for AI Idea Ranker application.",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch index.ts"
+    "dev": "../../node_modules/.bin/tsx watch index.ts",
+    "build": "../../node_modules/.bin/tsc -p tsconfig.build.json",
+    "start": "node dist/index.js"
   },
   "keywords": [
     "server",

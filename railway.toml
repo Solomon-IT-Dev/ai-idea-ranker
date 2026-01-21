@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm -C apps/server build"
+
+[deploy]
+startCommand = "pnpm -C apps/server start"
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
