@@ -239,24 +239,21 @@ Return JSON:
       })
     }
 
-    // Validate citations are only from allowed sources
-    for (const c of parsed.plan.citations ?? []) {
-      if (!sourceIdSet.has(c.chunkId)) {
-        throw new AppError({
-          statusCode: 502,
-          errorType: 'openai_invalid_citation',
-          message: 'AI returned a citation to an unknown source chunk.',
-        })
-      }
-    }
-    for (const c of parsed.experimentCard.citations ?? []) {
-      if (!sourceIdSet.has(c.chunkId)) {
-        throw new AppError({
-          statusCode: 502,
-          errorType: 'openai_invalid_citation',
-          message: 'AI returned a citation to an unknown source chunk.',
-        })
-      }
+    // Citations should reference only provided SOURCES, but models can still drift.
+    // For MVP we drop invalid citations instead of failing the whole generation.
+    const rawPlanCitations = parsed.plan.citations ?? []
+    const rawCardCitations = parsed.experimentCard.citations ?? []
+
+    const planCitations = rawPlanCitations.filter(c => sourceIdSet.has(c.chunkId))
+    const cardCitations = rawCardCitations.filter(c => sourceIdSet.has(c.chunkId))
+
+    const dropped = rawPlanCitations.length + rawCardCitations.length - planCitations.length - cardCitations.length
+    if (dropped > 0) {
+      publishRunEvent(input.runId, 'plan.progress', {
+        runId: input.runId,
+        stage: 'artifacts.citations_filtered',
+        message: `Filtered out ${dropped} invalid citation(s) (not in SOURCES).`,
+      })
     }
 
     publishRunEvent(input.runId, 'plan.progress', {
@@ -265,8 +262,8 @@ Return JSON:
       message: 'Rendering markdown...',
     })
 
-    const planMd = renderPlanMarkdown(parsed.plan)
-    const cardMd = renderExperimentCardMarkdown(parsed.experimentCard)
+    const planMd = renderPlanMarkdown({ ...parsed.plan, citations: planCitations })
+    const cardMd = renderExperimentCardMarkdown({ ...parsed.experimentCard, citations: cardCitations })
 
     publishRunEvent(input.runId, 'plan.progress', {
       runId: input.runId,
@@ -280,7 +277,7 @@ Return JSON:
       owner_id: run.owner_id,
       type: 'plan_30_60_90',
       content_markdown: planMd,
-      citations: parsed.plan.citations ?? [],
+      citations: planCitations,
     })
 
     const cardArtifact = await insertArtifact(db, {
@@ -289,7 +286,7 @@ Return JSON:
       owner_id: run.owner_id,
       type: 'experiment_card',
       content_markdown: cardMd,
-      citations: parsed.experimentCard.citations ?? [],
+      citations: cardCitations,
     })
 
     publishRunEvent(input.runId, 'plan.progress', {
@@ -313,6 +310,7 @@ Return JSON:
       errorType: err?.errorType ?? 'unknown_error',
       message: err?.message ?? 'Artifacts generation failed.',
     })
+    throw err
   }
 }
 

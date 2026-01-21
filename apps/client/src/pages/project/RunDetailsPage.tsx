@@ -51,10 +51,12 @@ export function RunDetailsPage() {
     const t = stream.lastEvent?.type
     if (t === 'run.completed' || t === 'run.failed') {
       void runQuery.refetch()
-      if (t === 'run.failed') toast.error('Run failed. Check errors.')
+      if (t === 'run.failed') {
+        toast.error(isGeneratingArtifacts ? 'Artifacts generation failed. Check errors.' : 'Run failed. Check errors.')
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream.lastEvent?.type])
+  }, [stream.lastEvent?.type, isGeneratingArtifacts])
 
   // Track `plan.progress` events (artifacts streaming)
   useEffect(() => {

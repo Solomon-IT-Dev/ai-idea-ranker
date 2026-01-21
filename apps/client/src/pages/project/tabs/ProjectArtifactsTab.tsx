@@ -235,6 +235,7 @@ export function ProjectArtifactsTab() {
                     variant="outline"
                     size="sm"
                     onClick={() => onCopy(latestPlan?.content_markdown ?? null)}
+                    disabled={!latestPlan}
                   >
                     Copy
                   </Button>
@@ -255,6 +256,7 @@ export function ProjectArtifactsTab() {
                     variant="outline"
                     size="sm"
                     onClick={() => onCopy(latestCard?.content_markdown ?? null)}
+                    disabled={!latestCard}
                   >
                     Copy
                   </Button>

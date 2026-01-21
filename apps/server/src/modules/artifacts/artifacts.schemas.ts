@@ -1,9 +1,35 @@
 import { z } from 'zod'
 
-const uuidRegex =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i
+const NIL_UUID = '00000000-0000-0000-0000-000000000000'
+
+// Best-effort UUID extraction (matches RFC4122-ish UUIDs + nil/ffff sentinels).
+const uuidExtractRegex =
+  /(00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})/
 
 function coerceCitation(value: unknown): unknown {
+  if (typeof value === 'object' && value !== null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const v = value as any
+    const chunkIdRaw = typeof v.chunkId === 'string' ? v.chunkId : ''
+    const quoteRaw =
+      typeof v.quote === 'string'
+        ? v.quote
+        : typeof v.text === 'string'
+          ? v.text
+          : typeof v.snippet === 'string'
+            ? v.snippet
+            : ''
+
+    const match = uuidExtractRegex.exec(chunkIdRaw)
+    const chunkId = match?.[1] ?? (chunkIdRaw && uuidExtractRegex.exec(String(chunkIdRaw))?.[1]) ?? NIL_UUID
+
+    let quote = String(quoteRaw ?? '').trim()
+    if (!quote) quote = JSON.stringify(value).slice(0, 300)
+    if (quote.length > 300) quote = quote.slice(0, 300)
+
+    return { chunkId, quote }
+  }
+
   if (typeof value !== 'string') return value
 
   const text = value.trim()
@@ -18,10 +44,10 @@ function coerceCitation(value: unknown): unknown {
     }
   }
 
-  const match = uuidRegex.exec(text)
+  const match = uuidExtractRegex.exec(text)
   if (!match) return value
 
-  const chunkId = match[0]
+  const chunkId = match[1]
   let quote = text.slice(match.index + chunkId.length).trim()
   quote = quote.replace(/^[:\-–—\s]+/, '').trim()
   quote = quote.replace(/^[“"]+/, '').replace(/[”"]+$/, '').trim()
