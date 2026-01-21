@@ -1,5 +1,4 @@
 [build]
-builder = "NIXPACKS"
 buildCommand = "pnpm -C apps/server build"
 
 [deploy]
