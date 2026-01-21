@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { useGenerateArtifactsMutation } from '@/entities/artifact/api/artifacts.queries'
-import { useRun } from '@/entities/run/api/runs.queries'
+import { getLatestArtifacts, listArtifacts } from '@/entities/artifact/api/artifacts.api'
+import { artifactKeys, useGenerateArtifactsMutation } from '@/entities/artifact/api/artifacts.queries'
+import { runKeys, useRun } from '@/entities/run/api/runs.queries'
 import { useRunStream } from '@/features/runStream/model/runStream.hooks'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { Button } from '@/shared/ui/button'
@@ -15,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 export function RunDetailsPage() {
   const { projectId, runId } = useParams()
   const navigate = useNavigate()
+  const qc = useQueryClient()
 
   const pid = projectId ?? ''
   const rid = runId ?? ''
@@ -42,6 +45,21 @@ export function RunDetailsPage() {
     setIsGeneratingArtifacts(false)
   }, [pid, rid])
 
+  const prefetchArtifacts = useCallback(async () => {
+    if (!pid || !rid) return
+
+    await Promise.all([
+      qc.prefetchQuery({
+        queryKey: artifactKeys.latest(pid, rid),
+        queryFn: () => getLatestArtifacts({ projectId: pid, runId: rid }),
+      }),
+      qc.prefetchQuery({
+        queryKey: artifactKeys.list(pid, rid),
+        queryFn: () => listArtifacts({ projectId: pid, runId: rid }),
+      }),
+    ])
+  }, [pid, qc, rid])
+
   const shouldStream =
     isStreamEnabled &&
     Boolean(rid) &&
@@ -54,6 +72,7 @@ export function RunDetailsPage() {
     const t = stream.lastEvent?.type
     if (t === 'run.completed' || t === 'run.failed') {
       void runQuery.refetch()
+      if (pid) void qc.invalidateQueries({ queryKey: runKeys.all(pid) })
       if (t === 'run.failed') {
         toast.error(
           isGeneratingArtifacts
@@ -82,8 +101,9 @@ export function RunDetailsPage() {
       if (stage === 'artifacts.openai') toast.message('Artifacts: generating draft…')
       if (stage === 'artifacts.render') toast.message('Artifacts: rendering markdown…')
       if (stage === 'artifacts.persist') toast.message('Artifacts: saving…')
+      if (stage === 'artifacts.done') void prefetchArtifacts()
     }
-  }, [stream.lastEvent])
+  }, [prefetchArtifacts, stream.lastEvent])
 
   const scores = useMemo(() => {
     const d = runQuery.data
@@ -108,6 +128,7 @@ export function RunDetailsPage() {
 
     try {
       await generateArtifactsMutation.mutateAsync({ projectId: pid, runId: rid, topN: 3 })
+      await prefetchArtifacts()
       toast.success('Artifacts generated.')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
