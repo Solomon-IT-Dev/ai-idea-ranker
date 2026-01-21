@@ -5,9 +5,11 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { useRuns, useStartRun } from '@/entities/run/api/runs.queries'
+import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { zodResolver } from '@/shared/lib/zodResolver'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
+import { ErrorState } from '@/shared/ui/error-state'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
@@ -29,6 +31,8 @@ export function ProjectRunsTab() {
   const pid = projectId ?? ''
   const runsQuery = useRuns(pid)
   const startRun = useStartRun(pid)
+
+  useToastQueryError(runsQuery.isError, runsQuery.error, 'Failed to load runs.')
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -120,47 +124,62 @@ export function ProjectRunsTab() {
           </Button>
         </div>
 
-        <div className="mt-3 overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Created</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead>Top N</TableHead>
-                <TableHead className="text-right">Open</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedRuns.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString()}
-                  </TableCell>
-                  <TableCell>{r.status}</TableCell>
-                  <TableCell>{r.model}</TableCell>
-                  <TableCell>{r.top_n}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate(`/projects/${pid}/runs/${r.id}`)}
-                    >
-                      Open
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+        <div className="mt-3">
+          {runsQuery.isLoading ? (
+            <div className="h-32 animate-pulse rounded-md bg-muted" />
+          ) : runsQuery.isError ? (
+            <ErrorState
+              title="Failed to load runs"
+              message={
+                runsQuery.error instanceof Error ? runsQuery.error.message : 'Failed to load runs.'
+              }
+              onRetry={() => void runsQuery.refetch()}
+              isRetrying={runsQuery.isFetching}
+            />
+          ) : (
+            <div className="overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Top N</TableHead>
+                    <TableHead className="text-right">Open</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedRuns.map(r => (
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(r.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>{r.status}</TableCell>
+                      <TableCell>{r.model}</TableCell>
+                      <TableCell>{r.top_n}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/projects/${pid}/runs/${r.id}`)}
+                        >
+                          Open
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
 
-              {sortedRuns.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground">
-                    No runs yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                  {sortedRuns.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-muted-foreground">
+                        No runs yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       </Card>
     </div>

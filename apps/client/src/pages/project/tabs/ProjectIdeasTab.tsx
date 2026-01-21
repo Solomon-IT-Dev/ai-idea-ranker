@@ -4,6 +4,8 @@ import { toast } from 'sonner'
 import { useIdeas, useImportIdeas } from '@/entities/idea/api/ideas.queries'
 import { IdeasImportForm } from '@/features/idea/IdeasImportForm'
 import { IdeasTable } from '@/features/idea/IdeasTable'
+import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
+import { ErrorState } from '@/shared/ui/error-state'
 
 export function ProjectIdeasTab() {
   const { projectId } = useParams()
@@ -13,13 +15,15 @@ export function ProjectIdeasTab() {
   const ideasQuery = useIdeas(pid)
   const importMutation = useImportIdeas(pid)
 
-	  async function onImport(text: string) {
-	    try {
-	      const res = await importMutation.mutateAsync(text)
-	      const imported = res.insertedCount ?? res.ideas.length
-	      toast.success(`Imported ${imported} ideas.`)
-	    } catch (e) {
-	      toast.error('Failed to import ideas.')
+  useToastQueryError(ideasQuery.isError, ideasQuery.error, 'Failed to load ideas.')
+
+  async function onImport(text: string) {
+    try {
+      const res = await importMutation.mutateAsync(text)
+      const imported = res.insertedCount ?? res.ideas.length
+      toast.success(`Imported ${imported} ideas.`)
+    } catch (e) {
+      toast.error('Failed to import ideas.')
 
       console.error(e)
     }
@@ -33,6 +37,15 @@ export function ProjectIdeasTab() {
 
       {ideasQuery.isLoading ? (
         <div className="h-32 animate-pulse rounded-md bg-muted" />
+      ) : ideasQuery.isError ? (
+        <ErrorState
+          title="Failed to load ideas"
+          message={
+            ideasQuery.error instanceof Error ? ideasQuery.error.message : 'Failed to load ideas.'
+          }
+          onRetry={() => void ideasQuery.refetch()}
+          isRetrying={ideasQuery.isFetching}
+        />
       ) : (
         <IdeasTable ideas={ideas} />
       )}

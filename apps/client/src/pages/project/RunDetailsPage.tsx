@@ -5,8 +5,10 @@ import { toast } from 'sonner'
 import { useGenerateArtifactsMutation } from '@/entities/artifact/api/artifacts.queries'
 import { useRun } from '@/entities/run/api/runs.queries'
 import { useRunStream } from '@/features/runStream/model/runStream.hooks'
+import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
+import { ErrorState } from '@/shared/ui/error-state'
 import { Separator } from '@/shared/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 
@@ -18,6 +20,7 @@ export function RunDetailsPage() {
   const rid = runId ?? ''
 
   const runQuery = useRun(pid, rid)
+  useToastQueryError(runQuery.isError, runQuery.error, 'Failed to load run.')
 
   const run = runQuery.data?.run
   const status = run?.status
@@ -152,6 +155,17 @@ export function RunDetailsPage() {
             </Button>
           </div>
         </div>
+
+        {runQuery.isError ? (
+          <ErrorState
+            title="Failed to load run"
+            message={
+              runQuery.error instanceof Error ? runQuery.error.message : 'Failed to load run.'
+            }
+            onRetry={() => void runQuery.refetch()}
+            isRetrying={runQuery.isFetching}
+          />
+        ) : null}
 
         <Card className="p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

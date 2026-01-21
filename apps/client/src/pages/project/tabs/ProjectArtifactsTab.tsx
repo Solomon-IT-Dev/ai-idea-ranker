@@ -7,9 +7,11 @@ import { toast } from 'sonner'
 import { useArtifactsLatest, useArtifactsList } from '@/entities/artifact/api/artifacts.queries'
 import type { Artifact, ArtifactType, VersionsByType } from '@/entities/artifact/types/artifact'
 import { useRuns } from '@/entities/run/api/runs.queries'
+import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { getArtifactsLastRunId, setArtifactsLastRunId } from '@/shared/lib/storage'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
+import { ErrorState } from '@/shared/ui/error-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { Separator } from '@/shared/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
@@ -140,6 +142,7 @@ export function ProjectArtifactsTab() {
   })
 
   const runsQuery = useRuns(pid)
+  useToastQueryError(runsQuery.isError, runsQuery.error, 'Failed to load runs.')
   const runs = useMemo(() => {
     return (runsQuery.data?.runs ?? [])
       .slice()
@@ -148,6 +151,8 @@ export function ProjectArtifactsTab() {
 
   const latestQuery = useArtifactsLatest(pid, runId, Boolean(pid && runId))
   const listQuery = useArtifactsList(pid, runId, Boolean(pid && runId))
+  useToastQueryError(latestQuery.isError, latestQuery.error, 'Failed to load latest artifacts.')
+  useToastQueryError(listQuery.isError, listQuery.error, 'Failed to load artifact versions.')
 
   // If URL changes externally, sync state.
   useEffect(() => {
@@ -293,6 +298,17 @@ export function ProjectArtifactsTab() {
         </Card>
       )}
 
+      {pid && runsQuery.isError ? (
+        <ErrorState
+          title="Failed to load runs"
+          message={
+            runsQuery.error instanceof Error ? runsQuery.error.message : 'Failed to load runs.'
+          }
+          onRetry={() => void runsQuery.refetch()}
+          isRetrying={runsQuery.isFetching}
+        />
+      ) : null}
+
       {!pid || !runId ? (
         <Card className="p-4">
           <p className="text-sm text-muted-foreground">
@@ -315,9 +331,12 @@ export function ProjectArtifactsTab() {
                 <div className="h-72 animate-pulse rounded-md bg-muted" />
               </div>
             ) : latestQuery.isError ? (
-              <Card className="p-4">
-                <p className="text-sm text-destructive">{latestError}</p>
-              </Card>
+              <ErrorState
+                title="Failed to load latest artifacts"
+                message={latestError}
+                onRetry={() => void latestQuery.refetch()}
+                isRetrying={latestQuery.isFetching}
+              />
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -380,9 +399,12 @@ export function ProjectArtifactsTab() {
                 <div className="h-64 animate-pulse rounded-md bg-muted" />
               </div>
             ) : listQuery.isError ? (
-              <Card className="p-4">
-                <p className="text-sm text-destructive">{listError}</p>
-              </Card>
+              <ErrorState
+                title="Failed to load artifact versions"
+                message={listError}
+                onRetry={() => void listQuery.refetch()}
+                isRetrying={listQuery.isFetching}
+              />
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <Card className="p-4">

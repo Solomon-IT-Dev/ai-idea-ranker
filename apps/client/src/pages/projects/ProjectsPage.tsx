@@ -1,12 +1,11 @@
 import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { useCreateProject, useProjects } from '@/entities/project/api/projects.queries'
 import { useAuth } from '@/features/auth/model/auth.hooks'
-import { ApiError } from '@/shared/api/http'
+import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { setLastProjectId } from '@/shared/lib/storage'
 import { zodResolver } from '@/shared/lib/zodResolver'
 import { Button } from '@/shared/ui/button'
@@ -19,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/shared/ui/dialog'
+import { ErrorState } from '@/shared/ui/error-state'
 import { FullScreenSpinner } from '@/shared/ui/full-screen-spinner'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -38,10 +38,12 @@ export function ProjectsPage() {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
 
-  const { data, isLoading, error } = useProjects()
+  const projectsQuery = useProjects()
   const createMutation = useCreateProject()
 
-  const projects = useMemo(() => data?.projects ?? [], [data])
+  useToastQueryError(projectsQuery.isError, projectsQuery.error, 'Failed to load projects.')
+
+  const projects = useMemo(() => projectsQuery.data?.projects ?? [], [projectsQuery.data])
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
@@ -49,27 +51,22 @@ export function ProjectsPage() {
   })
 
   async function onCreate(values: CreateProjectForm) {
-    try {
-      const res = await createMutation.mutateAsync({
-        name: values.name,
-        constraints: {
-          budget: values.budget,
-          team: {
-            fe: values.fe,
-            be: values.be,
-            ...(values.ds ? { ds: values.ds } : {}),
-          },
+    const res = await createMutation.mutateAsync({
+      name: values.name,
+      constraints: {
+        budget: values.budget,
+        team: {
+          fe: values.fe,
+          be: values.be,
+          ...(values.ds ? { ds: values.ds } : {}),
         },
-      })
+      },
+    })
 
-      const projectId = res.project.id
-      setLastProjectId(projectId)
-      form.reset({ name: '', budget: 10000, fe: 1, be: 1, ds: 0 })
-      navigate(`/projects/${projectId}`)
-    } catch (err) {
-      const e = err as ApiError
-      toast.error(e.message)
-    }
+    const projectId = res.project.id
+    setLastProjectId(projectId)
+    form.reset({ name: '', budget: 10000, fe: 1, be: 1, ds: 0 })
+    navigate(`/projects/${projectId}`)
   }
 
   function onOpenProject(projectId: string) {
@@ -157,20 +154,22 @@ export function ProjectsPage() {
           </div>
         </header>
 
-        {isLoading ? <FullScreenSpinner /> : null}
+        {projectsQuery.isLoading ? <FullScreenSpinner /> : null}
 
-        {error ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Failed to load projects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
-            </CardContent>
-          </Card>
+        {projectsQuery.isError ? (
+          <ErrorState
+            title="Failed to load projects"
+            message={
+              projectsQuery.error instanceof Error
+                ? projectsQuery.error.message
+                : 'Failed to load projects.'
+            }
+            onRetry={() => void projectsQuery.refetch()}
+            isRetrying={projectsQuery.isFetching}
+          />
         ) : null}
 
-        {!isLoading && !error && projects.length === 0 ? (
+        {!projectsQuery.isLoading && !projectsQuery.isError && projects.length === 0 ? (
           <Card>
             <CardHeader>
               <CardTitle>No projects yet</CardTitle>
@@ -183,7 +182,7 @@ export function ProjectsPage() {
           </Card>
         ) : null}
 
-        {!isLoading && !error && projects.length > 0 ? (
+        {!projectsQuery.isLoading && !projectsQuery.isError && projects.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {projects.map(p => (
               <Card

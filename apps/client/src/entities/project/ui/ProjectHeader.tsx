@@ -15,7 +15,7 @@ export function ProjectHeader({ name, constraints }: Props) {
 
   return (
     <Card className="p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold">{name}</h1>
           <p className="text-sm text-muted-foreground">
