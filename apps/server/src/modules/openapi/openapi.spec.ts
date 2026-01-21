@@ -3,12 +3,24 @@ export const openapiSpec = {
   info: {
     version: '1.0.0',
     title: 'AI Idea Ranker API',
-    description: 'OpenAPI documentation for the AI Idea Ranker server.',
+    description: [
+      'OpenAPI documentation for the AI Idea Ranker server.',
+      '',
+      'Notes:',
+      '- Auth: use `Authorization: Bearer <Supabase access token>` on protected endpoints.',
+      '- Request correlation: the server returns `x-request-id` on every response; error bodies also include `requestId`.',
+      '- Errors: JSON error shape is stable (`status`, `errorType`, `message`, `requestId`, optional `debug`).',
+      '- Streaming: long-running operations stream progress via SSE (`text/event-stream`).',
+    ].join('\n'),
   },
   servers: [
     {
       url: 'http://localhost:8080',
       description: 'Local server',
+    },
+    {
+      url: 'https://appsserver-production-d740.up.railway.app',
+      description: 'Production server (Railway)',
     },
   ],
   tags: [
@@ -28,6 +40,99 @@ export const openapiSpec = {
         bearerFormat: 'JWT',
       },
     },
+    headers: {
+      XRequestId: {
+        description: 'Correlation id for this request (also included in error bodies as `requestId`).',
+        schema: { type: 'string', format: 'uuid' },
+      },
+    },
+    responses: {
+      BadRequest: {
+        description: 'Bad Request',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ErrorResponse' },
+            examples: {
+              validation: {
+                summary: 'Validation error',
+                value: {
+                  status: 'fail',
+                  errorType: 'validation_error',
+                  message: 'input: Invalid input',
+                  requestId: '00000000-0000-0000-0000-000000000000',
+                },
+              },
+            },
+          },
+        },
+      },
+      Unauthorized: {
+        description: 'Unauthorized',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ErrorResponse' },
+            examples: {
+              missingToken: {
+                summary: 'Missing token',
+                value: {
+                  status: 'fail',
+                  errorType: 'auth_missing_token',
+                  message: 'Authorization token is missing.',
+                  requestId: '00000000-0000-0000-0000-000000000000',
+                },
+              },
+            },
+          },
+        },
+      },
+      NotFound: {
+        description: 'Not Found',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+      },
+      Conflict: {
+        description: 'Conflict',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+      },
+      TooManyRequests: {
+        description: 'Too Many Requests',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ErrorResponse' },
+            examples: {
+              rateLimit: {
+                summary: 'Rate limited',
+                value: {
+                  status: 'fail',
+                  errorType: 'too_many_requests',
+                  message: 'Too many requests from this IP, please try again later.',
+                  requestId: '00000000-0000-0000-0000-000000000000',
+                },
+              },
+            },
+          },
+        },
+      },
+      InternalServerError: {
+        description: 'Internal Server Error',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+      },
+      BadGateway: {
+        description: 'Bad Gateway',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+      },
+      ServiceUnavailable: {
+        description: 'Service Unavailable',
+        headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+      },
+    },
     schemas: {
       ErrorResponse: {
         type: 'object',
@@ -36,8 +141,17 @@ export const openapiSpec = {
           errorType: { type: 'string' },
           message: { type: 'string' },
           requestId: { type: 'string' },
+          debug: { type: 'object', additionalProperties: true },
         },
-        required: ['status', 'errorType', 'message'],
+        required: ['status', 'errorType', 'message', 'requestId'],
+      },
+      AuthMeResponse: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', format: 'uuid' },
+          requestId: { type: 'string', format: 'uuid' },
+        },
+        required: ['userId', 'requestId'],
       },
       Project: {
         type: 'object',
@@ -49,6 +163,37 @@ export const openapiSpec = {
           created_at: { type: 'string', format: 'date-time' },
         },
         required: ['id', 'owner_id', 'name', 'constraints', 'created_at'],
+      },
+      RunStatus: {
+        type: 'string',
+        enum: ['running', 'completed', 'failed'],
+      },
+      Citation: {
+        type: 'object',
+        properties: {
+          chunkId: { type: 'string', format: 'uuid' },
+          quote: { type: 'string' },
+        },
+        required: ['chunkId', 'quote'],
+      },
+      RunWeights: {
+        type: 'object',
+        properties: {
+          impact: { type: 'number' },
+          effort: { type: 'number' },
+          risk: { type: 'number' },
+          dataReadiness: { type: 'number' },
+        },
+        required: ['impact', 'effort', 'risk', 'dataReadiness'],
+      },
+      ResourceEstimate: {
+        type: 'object',
+        properties: {
+          feDays: { type: 'number' },
+          beDays: { type: 'number' },
+          dsDays: { type: 'number' },
+        },
+        additionalProperties: true,
       },
       Idea: {
         type: 'object',
@@ -121,9 +266,9 @@ export const openapiSpec = {
           id: { type: 'string', format: 'uuid' },
           project_id: { type: 'string', format: 'uuid' },
           owner_id: { type: 'string', format: 'uuid' },
-          status: { type: 'string' },
+          status: { $ref: '#/components/schemas/RunStatus' },
           model: { type: 'string' },
-          weights: { type: 'object', additionalProperties: true },
+          weights: { $ref: '#/components/schemas/RunWeights' },
           top_n: { type: 'integer' },
           prompt_version: { type: 'string' },
           input_snapshot: { type: 'object', additionalProperties: true },
@@ -133,7 +278,19 @@ export const openapiSpec = {
           error_message: { type: ['string', 'null'] },
           created_at: { type: 'string', format: 'date-time' },
         },
-        required: ['id', 'project_id', 'owner_id', 'status', 'model', 'created_at'],
+        required: [
+          'id',
+          'project_id',
+          'owner_id',
+          'status',
+          'model',
+          'weights',
+          'top_n',
+          'prompt_version',
+          'input_snapshot',
+          'sources_used',
+          'created_at',
+        ],
       },
       IdeaScore: {
         type: 'object',
@@ -149,9 +306,17 @@ export const openapiSpec = {
           data_readiness: { type: 'integer' },
           overall: { type: 'number' },
           rationale: { type: 'string' },
-          citations: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          citations: { type: 'array', items: { $ref: '#/components/schemas/Citation' } },
           cost_estimate_usd: { type: ['integer', 'null'] },
-          resource_estimate: { type: 'object', additionalProperties: true },
+          resource_estimate: { $ref: '#/components/schemas/ResourceEstimate' },
+          ideas: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              title: { type: 'string' },
+            },
+            required: ['id', 'title'],
+          },
           created_at: { type: 'string', format: 'date-time' },
         },
         required: [
@@ -180,7 +345,7 @@ export const openapiSpec = {
           owner_id: { type: 'string', format: 'uuid' },
           type: { type: 'string', enum: ['plan_30_60_90', 'experiment_card'] },
           content_markdown: { type: 'string' },
-          citations: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          citations: { type: 'array', items: { $ref: '#/components/schemas/Citation' } },
           created_at: { type: 'string', format: 'date-time' },
         },
         required: [
@@ -204,6 +369,7 @@ export const openapiSpec = {
         responses: {
           '200': {
             description: 'OK',
+            headers: { 'x-request-id': { $ref: '#/components/headers/XRequestId' } },
             content: {
               'application/json': {
                 schema: {
@@ -223,8 +389,11 @@ export const openapiSpec = {
         summary: 'Get current user',
         security: [{ BearerAuth: [] }],
         responses: {
-          '200': { description: 'OK' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '200': {
+            description: 'OK',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/AuthMeResponse' } } },
+          },
+          '401': { $ref: '#/components/responses/Unauthorized' },
         },
       },
     },
@@ -252,7 +421,8 @@ export const openapiSpec = {
               },
             },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
       post: {
@@ -287,8 +457,9 @@ export const openapiSpec = {
               },
             },
           },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -318,8 +489,9 @@ export const openapiSpec = {
               },
             },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -365,8 +537,10 @@ export const openapiSpec = {
               },
             },
           },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -397,8 +571,10 @@ export const openapiSpec = {
               },
             },
           },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -433,9 +609,10 @@ export const openapiSpec = {
               },
             },
           },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
       delete: {
@@ -445,8 +622,9 @@ export const openapiSpec = {
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         responses: {
           '204': { description: 'No Content' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -472,9 +650,33 @@ export const openapiSpec = {
           },
         },
         responses: {
-          '201': { description: 'Created' },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '201': {
+            description: 'Created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    playbook: { $ref: '#/components/schemas/Playbook' },
+                    chunksInserted: { type: 'integer' },
+                    embeddings: {
+                      type: 'object',
+                      properties: {
+                        status: { type: 'string', enum: ['ok', 'failed'] },
+                        errorType: { type: ['string', 'null'] },
+                      },
+                      required: ['status'],
+                    },
+                  },
+                  required: ['playbook', 'chunksInserted', 'embeddings'],
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
       get: {
@@ -498,7 +700,9 @@ export const openapiSpec = {
               },
             },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -525,10 +729,42 @@ export const openapiSpec = {
           },
         },
         responses: {
-          '200': { description: 'OK' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
-          '409': { $ref: '#/components/schemas/ErrorResponse' },
+          '200': {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    query: { type: 'string' },
+                    topK: { type: 'integer' },
+                    results: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          chunkId: { type: 'string', format: 'uuid' },
+                          chunkIndex: { type: 'integer' },
+                          title: { type: ['string', 'null'] },
+                          score: { type: 'number' },
+                          text: { type: ['string', 'null'] },
+                        },
+                        required: ['chunkId', 'chunkIndex', 'title', 'score'],
+                      },
+                    },
+                  },
+                  required: ['query', 'topK', 'results'],
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': { $ref: '#/components/responses/Conflict' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
+          '502': { $ref: '#/components/responses/BadGateway' },
+          '503': { $ref: '#/components/responses/ServiceUnavailable' },
         },
       },
     },
@@ -557,7 +793,9 @@ export const openapiSpec = {
               },
             },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
       post: {
@@ -588,9 +826,28 @@ export const openapiSpec = {
           },
         },
         responses: {
-          '201': { description: 'Created' },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '201': {
+            description: 'Created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    run: { $ref: '#/components/schemas/Run' },
+                    top: { type: 'array', items: { $ref: '#/components/schemas/IdeaScore' } },
+                  },
+                  required: ['run', 'top'],
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': { $ref: '#/components/responses/Conflict' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
+          '502': { $ref: '#/components/responses/BadGateway' },
+          '503': { $ref: '#/components/responses/ServiceUnavailable' },
         },
       },
     },
@@ -602,9 +859,23 @@ export const openapiSpec = {
         parameters: [{ name: 'projectId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
         requestBody: { $ref: '#/paths/~1v1~1projects~1{projectId}~1runs/post/requestBody' },
         responses: {
-          '202': { description: 'Accepted' },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
+          '202': {
+            description: 'Accepted',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { run: { $ref: '#/components/schemas/Run' } },
+                  required: ['run'],
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': { $ref: '#/components/responses/Conflict' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -633,8 +904,9 @@ export const openapiSpec = {
               },
             },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -650,10 +922,21 @@ export const openapiSpec = {
         responses: {
           '200': {
             description: 'text/event-stream',
-            content: { 'text/event-stream': { schema: { type: 'string' } } },
+            content: {
+              'text/event-stream': {
+                schema: { type: 'string' },
+                examples: {
+                  event: {
+                    summary: 'Example SSE event',
+                    value: 'event: run.started\\ndata: {\"runId\":\"<uuid>\",\"projectId\":\"<uuid>\"}\\n\\n',
+                  },
+                },
+              },
+            },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -678,10 +961,36 @@ export const openapiSpec = {
           },
         },
         responses: {
-          '201': { description: 'Created' },
-          '400': { $ref: '#/components/schemas/ErrorResponse' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '409': { $ref: '#/components/schemas/ErrorResponse' },
+          '201': {
+            description: 'Created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    runId: { type: 'string', format: 'uuid' },
+                    model: { type: 'string' },
+                    artifacts: {
+                      type: 'object',
+                      properties: {
+                        plan: { $ref: '#/components/schemas/Artifact' },
+                        experimentCard: { $ref: '#/components/schemas/Artifact' },
+                      },
+                      required: ['plan', 'experimentCard'],
+                    },
+                  },
+                  required: ['runId', 'model', 'artifacts'],
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': { $ref: '#/components/responses/Conflict' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
+          '502': { $ref: '#/components/responses/BadGateway' },
+          '503': { $ref: '#/components/responses/ServiceUnavailable' },
         },
       },
     },
@@ -695,9 +1004,31 @@ export const openapiSpec = {
           { name: 'runId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
         ],
         responses: {
-          '200': { description: 'OK' },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '200': {
+            description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    runId: { type: 'string', format: 'uuid' },
+                    artifacts: {
+                      type: 'object',
+                      properties: {
+                        plan: { anyOf: [{ $ref: '#/components/schemas/Artifact' }, { type: 'null' }] },
+                        experimentCard: { anyOf: [{ $ref: '#/components/schemas/Artifact' }, { type: 'null' }] },
+                      },
+                      required: ['plan', 'experimentCard'],
+                    },
+                  },
+                  required: ['runId', 'artifacts'],
+                },
+              },
+            },
+          },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
@@ -723,14 +1054,23 @@ export const openapiSpec = {
                       type: 'array',
                       items: { $ref: '#/components/schemas/Artifact' },
                     },
+                    byType: {
+                      type: 'object',
+                      properties: {
+                        plan_30_60_90: { type: 'array', items: { $ref: '#/components/schemas/Artifact' } },
+                        experiment_card: { type: 'array', items: { $ref: '#/components/schemas/Artifact' } },
+                      },
+                      required: ['plan_30_60_90', 'experiment_card'],
+                    },
                   },
-                  required: ['runId', 'artifacts'],
+                  required: ['runId', 'artifacts', 'byType'],
                 },
               },
             },
           },
-          '401': { $ref: '#/components/schemas/ErrorResponse' },
-          '404': { $ref: '#/components/schemas/ErrorResponse' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '429': { $ref: '#/components/responses/TooManyRequests' },
         },
       },
     },
