@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { citationSchema } from '../../schemas/citation.schema.js'
+
 export const aiRunResultSchema = z.object({
   scores: z
     .array(
@@ -10,15 +12,7 @@ export const aiRunResultSchema = z.object({
         risk: z.number().int().min(1).max(10),
         dataReadiness: z.number().int().min(1).max(10),
         rationale: z.string().min(1).max(3000),
-        citations: z
-          .array(
-            z.object({
-              chunkId: z.string().uuid(),
-              quote: z.string().min(1).max(300),
-            })
-          )
-          .max(8)
-          .default([]),
+        citations: z.array(citationSchema).max(8).default([]),
         costEstimateUsd: z.number().int().min(0).max(10_000_000).optional(),
         resourceEstimate: z
           .object({

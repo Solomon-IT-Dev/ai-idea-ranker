@@ -6,6 +6,7 @@ import { closeRunStream, publishRunEvent } from '../../lib/runStream.lib.js'
 import { searchPlaybook } from '../playbook/playbook.service.js'
 import { assertProjectAccess } from '../projects/projects.guard.js'
 
+import { RUN_STUCK_TIMEOUT_MS } from './runs.constants.js'
 import {
   insertIdeaScores,
   insertRun,
@@ -19,6 +20,12 @@ import {
 import { aiRunResultSchema } from './runs.schemas.js'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+function isStaleRun(createdAtIso: string) {
+  const createdMs = Date.parse(createdAtIso)
+  if (Number.isNaN(createdMs)) return false
+  return Date.now() - createdMs > RUN_STUCK_TIMEOUT_MS
+}
 
 function computeOverallRaw(
   s: { impact: number; effort: number; risk: number; dataReadiness: number },
@@ -178,16 +185,28 @@ Return JSON with shape: { "scores": [ ... ] }.
           message: 'AI returned an unknown ideaId.',
         })
       }
+    }
 
-      for (const c of s.citations ?? []) {
-        if (!sourceIds.has(c.chunkId)) {
-          throw new AppError({
-            statusCode: 502,
-            errorType: 'openai_invalid_citation',
-            message: 'AI returned a citation to an unknown source chunk.',
-          })
-        }
-      }
+    // Models can drift and return citations that are not in SOURCES.
+    // For MVP we drop invalid citations instead of failing the entire run.
+    const sanitizedScores = parsed.scores.map(s => {
+      const rawCitations = s.citations ?? []
+      const citations = rawCitations.filter(c => sourceIds.has(c.chunkId))
+      return { ...s, citations }
+    })
+
+    const dropped = sanitizedScores.reduce((acc, s, idx) => {
+      const before = parsed.scores[idx]?.citations?.length ?? 0
+      const after = s.citations?.length ?? 0
+      return acc + (before - after)
+    }, 0)
+
+    if (dropped > 0) {
+      publishRunEvent(run.id, 'plan.progress', {
+        runId: run.id,
+        stage: 'citations_filtered',
+        message: `Filtered out ${dropped} invalid citation(s) (not in SOURCES).`,
+      })
     }
 
     publishRunEvent(run.id, 'plan.progress', {
@@ -196,7 +215,7 @@ Return JSON with shape: { "scores": [ ... ] }.
       message: 'Saving scores...',
     })
 
-    const rows = parsed.scores.map(s => {
+    const rows = sanitizedScores.map(s => {
       const rawOverall = computeOverallRaw(
         { impact: s.impact, effort: s.effort, risk: s.risk, dataReadiness: s.dataReadiness },
         input.weights
@@ -382,11 +401,53 @@ export async function getRun(db: SupabaseClient, input: { projectId: string; run
 
   const scores = await selectIdeaScoresByRunId(db, input.runId)
 
+  // Repair/timeout: async runs can be interrupted by server restarts (Railway deploys, crashes).
+  // In that case the DB row may remain "running" forever. Make it self-healing on read.
+  if (run.status === 'running') {
+    if (scores.length > 0) {
+      const repaired = await updateRun(db, input.runId, {
+        status: 'completed',
+        error_type: null,
+        error_message: null,
+      })
+      return { run: repaired, scores }
+    }
+
+    if (isStaleRun(run.created_at)) {
+      const failed = await updateRun(db, input.runId, {
+        status: 'failed',
+        error_type: 'run_stuck',
+        error_message:
+          'Run appears to be stuck (likely interrupted by a server restart). Please start a new run.',
+      })
+      return { run: failed, scores }
+    }
+  }
+
   return { run, scores }
 }
 
 export async function listRuns(db: SupabaseClient, input: { projectId: string }) {
   await assertProjectAccess(db, input.projectId)
+
+  const runs = await selectRunsByProjectId(db, input.projectId)
+
+  // Same self-healing logic for list views: mark very old "running" runs as failed.
+  // This avoids confusing "running for hours" history entries.
+  for (const r of runs as Array<{ id: string; status: string; created_at: string }>) {
+    if (r.status !== 'running') continue
+    if (!isStaleRun(r.created_at)) continue
+    try {
+      await updateRun(db, r.id, {
+        status: 'failed',
+        error_type: 'run_stuck',
+        error_message:
+          'Run appears to be stuck (likely interrupted by a server restart). Please start a new run.',
+      })
+    } catch (e) {
+      logger.warn({ err: e, runId: r.id }, 'Failed to mark stale run as failed.')
+    }
+  }
 
   return selectRunsByProjectId(db, input.projectId)
 }

@@ -12,7 +12,7 @@ export const securityConstants = {
     credentials: true,
   },
   rateLimit: {
-    limit: 300, // max requests per window per IP
+    limit: 800, // max requests per window per IP
     windowMs: 60 * 60 * 1000, // 1 hour
     windowMinutes: 60,
     standardHeaders: 'draft-7' as const,
