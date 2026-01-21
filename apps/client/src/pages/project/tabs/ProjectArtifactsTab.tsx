@@ -8,6 +8,8 @@ import { useArtifactsLatest, useArtifactsList } from '@/entities/artifact/api/ar
 import type { Artifact, ArtifactType, VersionsByType } from '@/entities/artifact/types/artifact'
 import { useRuns } from '@/entities/run/api/runs.queries'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
+import { copyToClipboard } from '@/shared/lib/clipboard'
+import { downloadTextFile } from '@/shared/lib/download'
 import { getArtifactsLastRunId, setArtifactsLastRunId } from '@/shared/lib/storage'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -206,12 +208,37 @@ export function ProjectArtifactsTab() {
     setSelectedVersionByType(prev => ({ ...prev, [type]: id }))
   }
 
-  function onCopy(md?: string | null) {
+  async function onCopy(md?: string | null) {
     if (!md) return
-    navigator.clipboard
-      .writeText(md)
-      .then(() => toast.success('Copied'))
-      .catch(() => toast.error('Copy failed'))
+    try {
+      await copyToClipboard(md)
+      toast.success('Copied')
+    } catch (e) {
+      toast.error('Copy failed')
+      console.error(e)
+    }
+  }
+
+  function onExport(filename: string, md?: string | null) {
+    if (!md) return
+    try {
+      downloadTextFile(filename, md, 'text/markdown')
+      toast.success('Downloaded')
+    } catch (e) {
+      toast.error('Download failed')
+      console.error(e)
+    }
+  }
+
+  function buildBundleMd(input: {
+    title: string
+    plan?: { md: string } | null
+    card?: { md: string } | null
+  }) {
+    const parts: string[] = [`# ${input.title}`]
+    if (input.plan) parts.push(`\n\n## 30-60-90 Plan\n\n${input.plan.md}`)
+    if (input.card) parts.push(`\n\n---\n\n## Experiment Card\n\n${input.card.md}`)
+    return parts.join('')
   }
 
   const latestPlan = latestQuery.data?.artifacts?.plan ?? null
@@ -338,18 +365,73 @@ export function ProjectArtifactsTab() {
                 isRetrying={latestQuery.isFetching}
               />
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">30-60-90 Plan</div>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-semibold">Export / Copy</div>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onCopy(latestPlan?.content_markdown ?? null)}
-                      disabled={!latestPlan}
+                      onClick={() =>
+                        void onCopy(
+                          buildBundleMd({
+                            title: `Artifacts — run ${runId}`,
+                            plan: latestPlan ? { md: latestPlan.content_markdown } : null,
+                            card: latestCard ? { md: latestCard.content_markdown } : null,
+                          })
+                        )
+                      }
+                      disabled={!latestPlan && !latestCard}
                     >
-                      Copy
+                      Copy all
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        onExport(
+                          `artifacts-${runId}-latest.md`,
+                          buildBundleMd({
+                            title: `Artifacts — run ${runId}`,
+                            plan: latestPlan ? { md: latestPlan.content_markdown } : null,
+                            card: latestCard ? { md: latestCard.content_markdown } : null,
+                          })
+                        )
+                      }
+                      disabled={!latestPlan && !latestCard}
+                    >
+                      Export all
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">30-60-90 Plan</div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void onCopy(latestPlan?.content_markdown ?? null)}
+                        disabled={!latestPlan}
+                      >
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          onExport(
+                            `artifact-plan-${runId}-${latestPlan?.id ?? 'latest'}.md`,
+                            latestPlan?.content_markdown ?? null
+                          )
+                        }
+                        disabled={!latestPlan}
+                      >
+                        Export
+                      </Button>
+                    </div>
                   </div>
                   {latestPlan ? (
                     <ArtifactMarkdown
@@ -367,14 +449,29 @@ export function ProjectArtifactsTab() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold">Experiment Card</div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onCopy(latestCard?.content_markdown ?? null)}
-                      disabled={!latestCard}
-                    >
-                      Copy
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void onCopy(latestCard?.content_markdown ?? null)}
+                        disabled={!latestCard}
+                      >
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          onExport(
+                            `artifact-experiment-card-${runId}-${latestCard?.id ?? 'latest'}.md`,
+                            latestCard?.content_markdown ?? null
+                          )
+                        }
+                        disabled={!latestCard}
+                      >
+                        Export
+                      </Button>
+                    </div>
                   </div>
                   {latestCard ? (
                     <ArtifactMarkdown
@@ -388,6 +485,7 @@ export function ProjectArtifactsTab() {
                     </Card>
                   )}
                 </div>
+              </div>
               </div>
             )}
           </TabsContent>
@@ -435,34 +533,84 @@ export function ProjectArtifactsTab() {
               </div>
             )}
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Latest vs Selected</div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
-                  }
-                  disabled={!selectedPlan && !selectedCard}
-                >
-                  Clear selection
-                </Button>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Plan</div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">Latest vs Selected</div>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onCopy(selectedPlan?.content_markdown ?? null)}
-                      disabled={!selectedPlan}
+                      onClick={() =>
+                        void onCopy(
+                          buildBundleMd({
+                            title: `Artifacts (selected) — run ${runId}`,
+                            plan: selectedPlan ? { md: selectedPlan.content_markdown } : null,
+                            card: selectedCard ? { md: selectedCard.content_markdown } : null,
+                          })
+                        )
+                      }
+                      disabled={!selectedPlan && !selectedCard}
                     >
                       Copy selected
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        onExport(
+                          `artifacts-${runId}-selected.md`,
+                          buildBundleMd({
+                            title: `Artifacts (selected) — run ${runId}`,
+                            plan: selectedPlan ? { md: selectedPlan.content_markdown } : null,
+                            card: selectedCard ? { md: selectedCard.content_markdown } : null,
+                          })
+                        )
+                      }
+                      disabled={!selectedPlan && !selectedCard}
+                    >
+                      Export selected
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
+                      }
+                      disabled={!selectedPlan && !selectedCard}
+                    >
+                      Clear selection
+                    </Button>
                   </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold">Plan</div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void onCopy(selectedPlan?.content_markdown ?? null)}
+                          disabled={!selectedPlan}
+                        >
+                          Copy
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            onExport(
+                              `artifact-plan-${runId}-${selectedPlan?.id ?? 'selected'}.md`,
+                              selectedPlan?.content_markdown ?? null
+                            )
+                          }
+                          disabled={!selectedPlan}
+                        >
+                          Export
+                        </Button>
+                      </div>
+                    </div>
                   {latestPlan ? (
                     <ArtifactMarkdown
                       title="Latest"
@@ -489,18 +637,33 @@ export function ProjectArtifactsTab() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Experiment Card</div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onCopy(selectedCard?.content_markdown ?? null)}
-                      disabled={!selectedCard}
-                    >
-                      Copy selected
-                    </Button>
-                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold">Experiment Card</div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void onCopy(selectedCard?.content_markdown ?? null)}
+                          disabled={!selectedCard}
+                        >
+                          Copy
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            onExport(
+                              `artifact-experiment-card-${runId}-${selectedCard?.id ?? 'selected'}.md`,
+                              selectedCard?.content_markdown ?? null
+                            )
+                          }
+                          disabled={!selectedCard}
+                        >
+                          Export
+                        </Button>
+                      </div>
+                    </div>
                   {latestCard ? (
                     <ArtifactMarkdown
                       title="Latest"
