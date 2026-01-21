@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 
@@ -31,10 +31,12 @@ function groupByType(artifacts: Artifact[]): VersionsByType {
 function ArtifactMarkdown({
   title,
   md,
+  projectId,
   variant = 'default',
 }: {
   title: string
   md: string
+  projectId: string
   variant?: 'default' | 'latest' | 'selected'
 }) {
   const border =
@@ -43,6 +45,8 @@ function ArtifactMarkdown({
       : variant === 'selected'
         ? 'border-ring'
         : 'border-border'
+
+  const decorated = useMemo(() => linkifySourcesMarkdown(md, projectId), [md, projectId])
 
   return (
     <Card className={`p-4 border ${border}`}>
@@ -57,11 +61,61 @@ function ArtifactMarkdown({
         </div>
         <Separator />
         <article className="prose prose-zinc max-w-none dark:prose-invert">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{md}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({ href, children }) => {
+                const h = href ?? ''
+                if (h.startsWith('/projects/')) {
+                  return (
+                    <Link to={h} className="underline underline-offset-4">
+                      {children}
+                    </Link>
+                  )
+                }
+                return (
+                  <a
+                    href={h}
+                    className="underline underline-offset-4"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {children}
+                  </a>
+                )
+              },
+            }}
+          >
+            {decorated}
+          </ReactMarkdown>
         </article>
       </div>
     </Card>
   )
+}
+
+const uuidRegex =
+  /([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)/
+
+function linkifySourcesMarkdown(md: string, projectId: string) {
+  const marker = '\n## Sources\n'
+  const idx = md.indexOf(marker)
+  if (idx === -1) return md
+
+  const head = md.slice(0, idx + marker.length)
+  const tail = md.slice(idx + marker.length)
+
+  const lines = tail.split('\n')
+  const mapped = lines.map(line => {
+    if (!line.startsWith('- [C')) return line
+    const match = uuidRegex.exec(line)
+    if (!match) return line
+    const chunkId = match[1]
+    const href = `/projects/${projectId}/playbook?chunkId=${chunkId}`
+    return line.replace(chunkId, `[${chunkId}](${href})`)
+  })
+
+  return head + mapped.join('\n')
 }
 
 function VersionsList({
@@ -437,6 +491,7 @@ export function ProjectArtifactsTab() {
                     <ArtifactMarkdown
                       title="Latest plan"
                       md={latestPlan.content_markdown}
+                      projectId={pid}
                       variant="latest"
                     />
                   ) : (
@@ -477,6 +532,7 @@ export function ProjectArtifactsTab() {
                     <ArtifactMarkdown
                       title="Latest experiment card"
                       md={latestCard.content_markdown}
+                      projectId={pid}
                       variant="latest"
                     />
                   ) : (
@@ -615,6 +671,7 @@ export function ProjectArtifactsTab() {
                     <ArtifactMarkdown
                       title="Latest"
                       md={latestPlan.content_markdown}
+                      projectId={pid}
                       variant="latest"
                     />
                   ) : (
@@ -626,6 +683,7 @@ export function ProjectArtifactsTab() {
                     <ArtifactMarkdown
                       title="Selected"
                       md={selectedPlan.content_markdown}
+                      projectId={pid}
                       variant="selected"
                     />
                   ) : (
@@ -668,6 +726,7 @@ export function ProjectArtifactsTab() {
                     <ArtifactMarkdown
                       title="Latest"
                       md={latestCard.content_markdown}
+                      projectId={pid}
                       variant="latest"
                     />
                   ) : (
@@ -679,6 +738,7 @@ export function ProjectArtifactsTab() {
                     <ArtifactMarkdown
                       title="Selected"
                       md={selectedCard.content_markdown}
+                      projectId={pid}
                       variant="selected"
                     />
                   ) : (
