@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { useRuns, useStartRun } from '@/entities/run/api/runs.queries'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { zodResolver } from '@/shared/lib/zodResolver'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { ErrorState } from '@/shared/ui/error-state'
@@ -23,6 +24,15 @@ const schema = z.object({
 })
 
 type FormValues = z.infer<typeof schema>
+
+function statusBadgeVariant(
+  status: string | undefined
+): 'default' | 'secondary' | 'outline' | 'destructive' {
+  if (status === 'completed') return 'default'
+  if (status === 'running') return 'secondary'
+  if (status === 'failed') return 'destructive'
+  return 'outline'
+}
 
 export function ProjectRunsTab() {
   const { projectId } = useParams()
@@ -154,7 +164,9 @@ export function ProjectRunsTab() {
                       <TableCell className="whitespace-nowrap">
                         {new Date(r.created_at).toLocaleString()}
                       </TableCell>
-                      <TableCell>{r.status}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>
+                      </TableCell>
                       <TableCell>{r.model}</TableCell>
                       <TableCell>{r.top_n}</TableCell>
                       <TableCell className="text-right">

@@ -9,7 +9,7 @@ import { Input } from '@/shared/ui/input'
 
 type Props = { projectId: string }
 
-export function PlaybookSearchTest({ projectId }: Props) {
+export function PlaybookSearchTest({ projectId, hasChunks = true }: Props & { hasChunks?: boolean }) {
   const { register, handleSubmit, watch } = useForm<{ query: string }>({
     defaultValues: { query: '' },
   })
@@ -17,7 +17,10 @@ export function PlaybookSearchTest({ projectId }: Props) {
   const query = watch('query')
   const mutation = usePlaybookSearch(projectId)
 
-  const isDisabled = useMemo(() => !query.trim() || mutation.isPending, [query, mutation.isPending])
+  const isDisabled = useMemo(() => {
+    if (!hasChunks) return true
+    return !query.trim() || mutation.isPending
+  }, [hasChunks, query, mutation.isPending])
 
   async function submit(values: { query: string }) {
     try {
@@ -37,18 +40,29 @@ export function PlaybookSearchTest({ projectId }: Props) {
         <div className="space-y-1">
           <h3 className="text-base font-semibold">Playbook search (RAG)</h3>
           <p className="text-sm text-muted-foreground">
-            Semantic search over playbook chunks (pgvector). Useful to verify citations.
+            Quick check that retrieval works. Search returns the most relevant playbook chunks used
+            for citations.
           </p>
         </div>
 
+        {!hasChunks ? (
+          <div className="rounded-md border bg-muted p-3 text-sm text-muted-foreground">
+            Upload a playbook first to enable RAG search.
+          </div>
+        ) : null}
+
         <div className="flex gap-2">
-          <Input placeholder="e.g., success metrics" {...register('query')} />
+          <Input placeholder="Try: success metrics, go/no-go, effort estimation…" {...register('query')} />
           <Button onClick={handleSubmit(submit)} disabled={isDisabled}>
             {mutation.isPending ? 'Searching…' : 'Search'}
           </Button>
         </div>
 
-        {results.length > 0 && (
+        {mutation.isSuccess && results.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No matches.</p>
+        ) : null}
+
+        {results.length > 0 ? (
           <div className="space-y-2">
             {results.map(r => (
               <div key={r.chunkId} className="rounded-md border p-3 text-sm">
@@ -62,7 +76,7 @@ export function PlaybookSearchTest({ projectId }: Props) {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </Card>
   )

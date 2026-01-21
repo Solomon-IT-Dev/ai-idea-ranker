@@ -4,7 +4,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getLatestArtifacts, listArtifacts } from '@/entities/artifact/api/artifacts.api'
-import { artifactKeys, useGenerateArtifactsMutation } from '@/entities/artifact/api/artifacts.queries'
+import {
+  artifactKeys,
+  useGenerateArtifactsMutation,
+} from '@/entities/artifact/api/artifacts.queries'
 import { runKeys, useRun } from '@/entities/run/api/runs.queries'
 import { useRunStream } from '@/features/runStream/model/runStream.hooks'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
@@ -66,7 +69,12 @@ export function RunDetailsPage() {
     Boolean(rid) &&
     (status === 'running' || status === undefined || isGeneratingArtifacts)
 
-  const stream = useRunStream({ projectId: pid, runId: rid, enabled: shouldStream })
+  const stream = useRunStream({
+    projectId: pid,
+    runId: rid,
+    enabled: shouldStream,
+    stopOnTerminal: !isGeneratingArtifacts,
+  })
 
   // When we receive terminal run events, refetch to get final scores
   useEffect(() => {
@@ -95,6 +103,11 @@ export function RunDetailsPage() {
       const stage = (e.data as any)?.stage
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const message = (e.data as any)?.message
+
+      // This section is specifically for artifacts generation.
+      // Ignore run-scoring stages like "scoring"/"persist" to avoid confusing UX.
+      const stageStr = typeof stage === 'string' ? stage : ''
+      if (!stageStr.startsWith('artifacts.')) return
 
       setPlanProgress(prev => [...prev, { stage, message, at: Date.now() }])
 
@@ -142,38 +155,19 @@ export function RunDetailsPage() {
   return (
     <div className="min-h-screen p-6">
       <div className="mx-auto max-w-5xl space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button variant="outline" onClick={() => navigate(`/projects/${pid}/runs`)}>
             Back
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => runQuery.refetch()}
               disabled={runQuery.isFetching}
             >
               Refresh
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/projects/${pid}/artifacts?runId=${rid}`)}
-              disabled={!pid || !rid}
-            >
-              Open Artifacts tab
-            </Button>
-
-            <Button
-              onClick={onGenerateArtifacts}
-              disabled={
-                runQuery.isFetching ||
-                generateArtifactsMutation.isPending ||
-                isGeneratingArtifacts ||
-                run?.status !== 'completed'
-              }
-            >
-              Generate 30-60-90 + Experiment Card
             </Button>
           </div>
         </div>
@@ -196,10 +190,16 @@ export function RunDetailsPage() {
               <p className="text-sm text-muted-foreground">runId: {rid}</p>
             </div>
 
-            <div className="text-sm">
-              <div>Status: {run?.status ?? 'loading…'}</div>
-              <div className="text-muted-foreground">
-                Stream: {stream.isConnected ? 'connected' : 'disconnected'}
+            <div className="space-y-2 text-sm">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span>Status</span>
+                <Badge variant={statusBadgeVariant(run?.status)}>{run?.status ?? 'loading'}</Badge>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 text-muted-foreground">
+                <span>Stream</span>
+                <Badge variant={stream.isConnected ? 'secondary' : 'destructive'}>
+                  {stream.isConnected ? 'connected' : 'disconnected'}
+                </Badge>
               </div>
             </div>
           </div>
@@ -211,11 +211,37 @@ export function RunDetailsPage() {
             </div>
           ) : null}
 
-          {run?.status !== 'completed' ? (
-            <div className="mt-3 text-xs text-muted-foreground">
-              Artifacts generation is enabled once the run is completed.
+          <Separator className="my-3" />
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-muted-foreground">
+              {run?.status !== 'completed'
+                ? 'Artifacts actions (available after the run is completed).'
+                : 'Artifacts actions.'}
             </div>
-          ) : null}
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/projects/${pid}/artifacts?runId=${rid}`)}
+                disabled={!pid || !rid}
+              >
+                Open Artifacts tab
+              </Button>
+
+              <Button
+                onClick={onGenerateArtifacts}
+                disabled={
+                  runQuery.isFetching ||
+                  generateArtifactsMutation.isPending ||
+                  isGeneratingArtifacts ||
+                  run?.status !== 'completed'
+                }
+              >
+                Generate Plan + Experiment Card
+              </Button>
+            </div>
+          </div>
         </Card>
 
         <Card className="p-4">
@@ -252,10 +278,10 @@ export function RunDetailsPage() {
           </div>
         </Card>
 
-        {/* Artifacts-specific progress (plan.progress) */}
+        {/* Artifacts generation progress (plan.progress: artifacts.*) */}
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold">Artifacts progress</h3>
+            <h3 className="text-base font-semibold">Artifacts generation</h3>
             <Button
               variant="outline"
               size="sm"
@@ -270,8 +296,8 @@ export function RunDetailsPage() {
 
           {planProgress.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No artifacts progress yet. Click “Generate 30-60-90 + Experiment Card” to see streamed
-              stages.
+              Artifacts are generated after the run completes. Click “Generate Plan + Experiment
+              Card” to start.
             </p>
           ) : (
             <div className="max-h-48 space-y-2 overflow-auto rounded-md border p-3 text-xs">
@@ -336,6 +362,15 @@ export function RunDetailsPage() {
   )
 }
 
+function statusBadgeVariant(
+  status: string | undefined
+): 'default' | 'secondary' | 'outline' | 'destructive' {
+  if (status === 'completed') return 'default'
+  if (status === 'running') return 'secondary'
+  if (status === 'failed') return 'destructive'
+  return 'outline'
+}
+
 function ProgressEventsList({ events }: { events: Array<{ type: string; data: unknown }> }) {
   function format(e: { type: string; data: unknown }): {
     title: string
@@ -346,7 +381,11 @@ function ProgressEventsList({ events }: { events: Array<{ type: string; data: un
     const d: any = e.data
 
     if (e.type === 'stream.open') {
-      return { title: 'Live stream connected', detail: `runId: ${d?.runId ?? ''}`, badge: { text: 'SSE', variant: 'outline' } }
+      return {
+        title: 'Live stream connected',
+        detail: `runId: ${d?.runId ?? ''}`,
+        badge: { text: 'SSE', variant: 'outline' },
+      }
     }
 
     if (e.type === 'run.snapshot') {

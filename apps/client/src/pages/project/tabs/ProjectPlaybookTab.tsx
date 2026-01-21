@@ -102,6 +102,8 @@ export function ProjectPlaybookTab() {
     <div className="space-y-4">
       <PlaybookEditor initial={pbQuery.data ?? null} onSave={onSave} isPending={upsert.isPending} />
 
+      <PlaybookSearchTest projectId={pid} hasChunks={chunks.length > 0} />
+
       <ChunksCard
         chunks={chunks}
         highlightedChunkId={chunkId}
@@ -109,9 +111,6 @@ export function ProjectPlaybookTab() {
         onCopyChunkLink={onCopyChunkLink}
         onClearChunkLink={onClearChunkLink}
       />
-
-      {/* Optional: keep it if retrieval endpoint exists; otherwise comment out */}
-      <PlaybookSearchTest projectId={pid} />
     </div>
   )
 }
@@ -136,8 +135,8 @@ function ChunksCard({
           <div className="space-y-1">
             <h3 className="text-base font-semibold">Chunks</h3>
             <p className="text-sm text-muted-foreground">
-              These are the server-generated chunks used for citations. Artifact “Sources” deep-links
-              jump here.
+              Advanced view: these are server-generated chunks used for citations. Artifact “Sources”
+              links jump here so you can verify what the model referenced.
             </p>
           </div>
           {highlightedChunkId ? (

@@ -36,20 +36,28 @@ function mapToTypedEvent(eventName: string, data: any): RunStreamEvent {
   return { type: 'unknown', data, eventName }
 }
 
-export function useRunStream(input: { projectId: string; runId: string; enabled: boolean }) {
+export function useRunStream(input: {
+  projectId: string
+  runId: string
+  enabled: boolean
+  stopOnTerminal?: boolean
+}) {
   const [events, setEvents] = useState<RunStreamEvent[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [lastEvent, setLastEvent] = useState<RunStreamEvent | null>(null)
 
   const abortRef = useRef<AbortController | null>(null)
+  const stopOnTerminal = input.stopOnTerminal ?? true
 
   const hasTerminal = useMemo(() => {
     return events.some(e => e.type === 'run.completed' || e.type === 'run.failed')
   }, [events])
 
+  const terminalGate = stopOnTerminal ? hasTerminal : false
+
   useEffect(() => {
     if (!input.enabled || !input.projectId || !input.runId) return
-    if (hasTerminal) return
+    if (terminalGate) return
 
     const abort = new AbortController()
     abortRef.current = abort
@@ -126,7 +134,7 @@ export function useRunStream(input: { projectId: string; runId: string; enabled:
       abort.abort()
       abortRef.current = null
     }
-  }, [hasTerminal, input.enabled, input.projectId, input.runId])
+  }, [terminalGate, input.enabled, input.projectId, input.runId])
 
   return {
     isConnected,
