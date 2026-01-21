@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { useGenerateArtifactsMutation } from '@/entities/artifact/api/artifacts.queries'
 import { useRun } from '@/entities/run/api/runs.queries'
 import { useRunStream } from '@/features/runStream/model/runStream.hooks'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
+import { Separator } from '@/shared/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 
 export function RunDetailsPage() {
@@ -17,19 +19,34 @@ export function RunDetailsPage() {
 
   const runQuery = useRun(pid, rid)
 
-  const status = runQuery.data?.run.status
+  const run = runQuery.data?.run
+  const status = run?.status
+
+  // Streaming is optional; we also use the same SSE stream for `plan.progress` during artifacts generation.
   const [isStreamEnabled, setIsStreamEnabled] = useState(true)
+
+  // Local progress log for artifacts generation (plan.progress)
+  const [planProgress, setPlanProgress] = useState<
+    Array<{ stage?: string; message?: string; at: number }>
+  >([])
+
+  // When generating artifacts, we want SSE enabled even if the run is already completed.
+  const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false)
 
   useEffect(() => {
     setIsStreamEnabled(true)
+    setPlanProgress([])
+    setIsGeneratingArtifacts(false)
   }, [pid, rid])
 
   const shouldStream =
-    isStreamEnabled && Boolean(rid) && (status === 'running' || status === undefined)
+    isStreamEnabled &&
+    Boolean(rid) &&
+    (status === 'running' || status === undefined || isGeneratingArtifacts)
 
   const stream = useRunStream({ projectId: pid, runId: rid, enabled: shouldStream })
 
-  // When we receive terminal events, refetch to get final scores
+  // When we receive terminal run events, refetch to get final scores
   useEffect(() => {
     const t = stream.lastEvent?.type
     if (t === 'run.completed' || t === 'run.failed') {
@@ -39,12 +56,57 @@ export function RunDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.lastEvent?.type])
 
-  const run = runQuery.data?.run
+  // Track `plan.progress` events (artifacts streaming)
+  useEffect(() => {
+    const e = stream.lastEvent
+    if (!e) return
+
+    if (e.type === 'plan.progress') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stage = (e.data as any)?.stage
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const message = (e.data as any)?.message
+
+      setPlanProgress(prev => [...prev, { stage, message, at: Date.now() }])
+
+      // Optional lightweight UX hints
+      if (stage === 'artifacts.openai') toast.message('Artifacts: generating draft…')
+      if (stage === 'artifacts.render') toast.message('Artifacts: rendering markdown…')
+      if (stage === 'artifacts.persist') toast.message('Artifacts: saving…')
+    }
+  }, [stream.lastEvent])
+
   const scores = useMemo(() => {
     const d = runQuery.data
     const arr = d?.top ?? d?.scores ?? []
     return [...arr].sort((a, b) => b.overall - a.overall)
   }, [runQuery.data])
+
+  const generateArtifactsMutation = useGenerateArtifactsMutation()
+
+  async function onGenerateArtifacts() {
+    if (!pid || !rid) return
+
+    if (run?.status !== 'completed') {
+      toast.error('Artifacts can be generated only after the run is completed.')
+      return
+    }
+
+    // Ensure stream is enabled so we can see `plan.progress`.
+    setIsStreamEnabled(true)
+    setIsGeneratingArtifacts(true)
+    setPlanProgress([])
+
+    try {
+      await generateArtifactsMutation.mutateAsync({ projectId: pid, runId: rid, topN: 3 })
+      toast.success('Artifacts generated.')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to generate artifacts.')
+    } finally {
+      setIsGeneratingArtifacts(false)
+    }
+  }
 
   return (
     <div className="min-h-screen p-6">
@@ -53,13 +115,28 @@ export function RunDetailsPage() {
           <Button variant="outline" onClick={() => navigate(`/projects/${pid}/runs`)}>
             Back
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => runQuery.refetch()}
-            disabled={runQuery.isFetching}
-          >
-            Refresh
-          </Button>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => runQuery.refetch()}
+              disabled={runQuery.isFetching}
+            >
+              Refresh
+            </Button>
+
+            <Button
+              onClick={onGenerateArtifacts}
+              disabled={
+                runQuery.isFetching ||
+                generateArtifactsMutation.isPending ||
+                isGeneratingArtifacts ||
+                run?.status !== 'completed'
+              }
+            >
+              Generate 30-60-90 + Experiment Card
+            </Button>
+          </div>
         </div>
 
         <Card className="p-4">
@@ -81,6 +158,12 @@ export function RunDetailsPage() {
             <div className="mt-3 rounded-md border p-3 text-sm">
               <div className="font-medium">Error</div>
               <div className="text-muted-foreground">{run.error_message}</div>
+            </div>
+          ) : null}
+
+          {run?.status !== 'completed' ? (
+            <div className="mt-3 text-xs text-muted-foreground">
+              Artifacts generation is enabled once the run is completed.
             </div>
           ) : null}
         </Card>
@@ -108,7 +191,7 @@ export function RunDetailsPage() {
                 {run?.status === 'running' && !shouldStream
                   ? 'Stream stopped (the run continues on the server).'
                   : run?.status === 'completed'
-                    ? 'Run completed. Live events are only available while the run is running.'
+                    ? 'Run completed. Live events are only available while streaming is enabled.'
                     : run?.status === 'failed'
                       ? 'Run failed. No stream events available.'
                       : 'No events yet.'}
@@ -126,6 +209,44 @@ export function RunDetailsPage() {
               </div>
             )}
           </div>
+        </Card>
+
+        {/* Artifacts-specific progress (plan.progress) */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold">Artifacts progress</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPlanProgress([])}
+              disabled={planProgress.length === 0}
+            >
+              Clear
+            </Button>
+          </div>
+
+          <Separator className="my-3" />
+
+          {planProgress.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No artifacts progress yet. Click “Generate 30-60-90 + Experiment Card” to see streamed
+              stages.
+            </p>
+          ) : (
+            <div className="max-h-48 space-y-2 overflow-auto rounded-md border p-3 text-xs">
+              {planProgress.map((p, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="rounded bg-muted px-2 py-0.5">{p.stage ?? 'progress'}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(p.at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  {p.message ? <div className="text-muted-foreground">{p.message}</div> : null}
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card className="p-4">
