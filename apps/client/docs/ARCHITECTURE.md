@@ -15,7 +15,6 @@ src/
   app/
     providers/          # QueryClientProvider, ErrorBoundary, AuthProvider, Toaster
     router/             # react-router routes, protected routes, navigation setup
-    layout/             # AppShell, Sidebar, Header
   pages/                # route-level composition only
     auth/
     projects/
@@ -34,8 +33,10 @@ src/
     run/
     artifact/
   shared/               # reusable infrastructure
-    api/                # fetch wrapper + sse
+    api/                # fetch wrapper + auth token helpers
     ui/                 # shared components/compositions
+    types/              # shared TS types (e.g. HTTP/JSON)
+    constants/
     hooks/
     lib/                # env, helpers, formatters
 ```
@@ -44,7 +45,7 @@ src/
 
 ### `shared/*`
 - infrastructure + generic helpers
-- must not import from entities/features/pages
+- does not import from entities/features/pages
 
 ### `entities/*`
 - domain API hooks, types, and entity UI primitives
@@ -56,7 +57,7 @@ src/
 
 ### `pages/*`
 - route-level composition (wires features + entities)
-- no direct networking code
+- composition only; networking lives in `entities/*` + `shared/*`
 
 ### `app/*`
 - application shell, routing, providers
@@ -67,8 +68,6 @@ src/
 - **Server state**: React Query
 - **UI state**: component state / hooks
 - **Auth state**: AuthProvider + `useAuth()` hook
-
-No Redux/Zustand planned.
 
 ## Import Order Convention (Recommended)
 

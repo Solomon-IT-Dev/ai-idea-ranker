@@ -1,138 +1,121 @@
 # AI Idea Ranker (Monorepo)
 
-A small tool to help an R&D team:
+AI Idea Ranker is a lightweight app for capturing product/PoC ideas, enriching them with
+AI-generated insights, and ranking them to decide what to build next.
 
-- upload/enter a list of PoC ideas (text/markdown)
-- define simple constraints (budget, team composition)
-- score and rank ideas (impact vs. effort/risk/data readiness)
-- produce top picks with rough resource/cost estimates
-- generate a clean **30-60-90 day plan**
-- generate one **Experiment Card** (problem, hypothesis, dataset, metrics, go/no-go)
-- include best-practice tips with **citations** from a short playbook (RAG)
+At a glance:
 
-This repo contains:
-- **server**: `apps/server` (Express API)
-- **client**: `apps/client` (Vite React SPA)
+- import ideas (plain text / Markdown)
+- add project constraints (budget, team)
+- score & rank ideas (impact vs effort/risk/data readiness)
+- stream long-running AI operations (SSE)
+- generate artifacts: **30/60/90 plan** and an **Experiment Card** (with citations from a playbook
+  via RAG)
 
----
+## Table of Contents
 
-## Current Tech Stack (pinned by package versions)
+- [Repo Layout](#repo-layout)
+- [Key Concepts](#key-concepts)
+- [Architecture Highlights](#architecture-highlights)
+- [Live Demo](#live-demo)
+- [Quick Start (Local)](#quick-start-local)
+- [Deployment](#deployment)
+- [API Documentation](#api-documentation)
+- [Docs Index](#docs-index)
+- [Root Scripts](#root-scripts)
 
-### Runtime / package manager
-- Node.js: **>= 20.0.0**
-- pnpm: **10.28.0**
-- TypeScript: **5.9.3**
-- tsx: **4.21.0**
+## Repo Layout
 
-### Server (`apps/server`)
-- express: **5.2.1**
-- @types/express: **5.0.6**
-- zod: **4.3.5**
-- jose: **6.1.3** (Supabase JWKS JWT verification)
-- @supabase/supabase-js: **2.90.1**
-- pino: **10.2.0**
-- pino-http: **11.0.0**
-- helmet: **8.1.0**
-- cors: **2.8.5**
-- compression: **1.8.1**
-- hpp: **0.2.3**
-- express-rate-limit: **8.2.1**
-- dotenv: **17.2.3**
+- Server: `apps/server` — Express API (TypeScript, ESM)
+- Client: `apps/client` — React SPA (Vite, TypeScript)
 
-### Tooling (root)
-- eslint: **9.39.2**
-- @eslint/js: **9.39.2**
-- typescript-eslint: **8.53.0**
-- eslint-config-prettier: **10.1.8**
-- eslint-plugin-import: **2.32.0**
-- eslint-plugin-simple-import-sort: **12.1.1**
-- prettier: **3.8.0**
+## Key Concepts
 
----
+- Project: the unit of work; includes constraints (budget/team).
+- Ideas: imported as text/Markdown and stored per project.
+- Playbook: a short internal guide uploaded per project; used as retrieval context for citations.
+- Run: a scoring & ranking execution (long-running; streamed to the client via SSE).
+- Artifacts: generated outputs (30/60/90 plan, Experiment Card) versioned per run.
 
 ## Architecture Highlights
 
-- TypeScript-only codebase
-- Express (ESM) with a **Nest.js-like layered structure**
-- Centralized errors via `AppError` + global error middleware
-- Request correlation via `x-request-id`
-- Supabase Auth via JWKS (`jose`)
-- Supabase Postgres with real RLS enforcement via **Variant B**:
-  - per-request Supabase client (Anon Key + User JWT)
+- Monorepo with shared conventions; app-level implementation details live in `apps/*/docs/`.
+- Auth: Supabase on the client; the server validates JWTs per request (JWKS).
+- Data access: Supabase Postgres with RLS enforced via request-scoped clients (Variant B).
+- Long-running AI operations are streamed via SSE for responsive UX.
 
-See `apps/server/docs/DEV_GUIDE.md` and `apps/client/docs/DEV_GUIDE.md` for the authoritative conventions.
+## Live Demo
 
----
+- Client (Vercel): `https://ai-idea-ranker.vercel.app/`
+- Server (Railway): `https://appsserver-production-d740.up.railway.app` (`/health`)
+- Server Swagger UI: `https://appsserver-production-d740.up.railway.app/docs`
 
-## Current Backend Capabilities
+## Quick Start (Local)
 
-- Health: `GET /health`
-- Auth: `GET /v1/auth/me` (Supabase JWT verified via JWKS)
-- Projects:
-  - `POST /v1/projects`
-  - `GET /v1/projects/:id`
-- Ideas:
-  - `POST /v1/projects/:projectId/ideas:import`
-  - `GET /v1/projects/:projectId/ideas?limit=50&offset=0`
-  - `PATCH /v1/ideas/:id`
-  - `DELETE /v1/ideas/:id`
-- Playbook:
-  - `POST /v1/projects/:projectId/playbook`
-  - `GET /v1/projects/:projectId/playbook`
-  - `POST /v1/projects/:projectId/playbook:search`
-- Runs:
-  - `POST /v1/projects/:projectId/runs`
-  - `POST /v1/projects/:projectId/runs:execute` (async)
-  - `GET /v1/projects/:projectId/runs/:runId`
-  - `GET /v1/projects/:projectId/runs/:runId/stream` (SSE)
-- Artifacts:
-  - `POST /v1/projects/:projectId/runs/:runId/artifacts:generate`
-  - `GET /v1/projects/:projectId/runs/:runId/artifacts:latest`
-  - `GET /v1/projects/:projectId/runs/:runId/artifacts`
+Prereqs: Node.js `>= 20` + `pnpm`.
 
----
+1. Install dependencies:
 
-## Quick Start (server)
-
-### 1) Install
 ```bash
 pnpm install
 ```
 
-### 2) Configure environment
-Create `apps/server/.env` (or your preferred local env setup). See `apps/server/docs/DEV_GUIDE.md` for exact variables.
-Create `apps/client/.env` for the client (see `apps/client/README.md`).
+2. Configure env files:
 
-### 3) Run server
+- Server: copy `apps/server/.env.example` → `apps/server/.env`
+- Client: copy `apps/client/.env.example` → `apps/client/.env`
+
+3. Prepare Supabase DB schema (once per Supabase project):
+
+- Apply SQL files from `apps/server/src/db/sql/` in order in the Supabase SQL editor (see
+  `apps/server/docs/DATABASE.md`)
+
+4. Ensure required external services are configured:
+
+- Supabase project is required (Auth + Postgres).
+- OpenAI API key is currently required for the server to start (env validation), and is used for
+  embeddings/AI flows.
+
+5. Run in two terminals:
+
 ```bash
 pnpm dev:server
+pnpm dev:client
 ```
 
-### 4) Health
-```bash
-curl -i http://localhost:8080/health
-```
+6. Verify:
 
----
+- Client: `http://localhost:3000`
+- Server health: `http://localhost:8080/health`
+- Swagger UI: `http://localhost:8080/docs`
 
-## Documentation
+## Deployment
 
-- `DEPLOYMENT.md` — Railway (server) + Vercel (client) deployment notes
-- `apps/server/docs/DEV_GUIDE.md` — server architecture, conventions, local development
-- `apps/server/docs/ROADMAP.md` — backend milestones to complete the MVP
-- `apps/client/docs/DEV_GUIDE.md` — client architecture + rules (FSD-lite)
-- `apps/client/docs/ROADMAP.md` — client milestones
-- API docs:
-  - `GET /openapi.json` — OpenAPI spec
-  - `GET /docs` — Swagger UI (loads assets from a CDN)
+See `docs/DEPLOYMENT.md` for Railway (server) + Vercel (client) setup, required environment
+variables, and post-deploy checks.
 
-### Current deployments
-- Server (Railway): `https://appsserver-production-d740.up.railway.app` (health: `/health`)
-- Server Swagger UI: `https://appsserver-production-d740.up.railway.app/docs`
-- Client (Vercel): `https://ai-idea-ranker.vercel.app/`
+## API Documentation
 
----
+- Swagger UI: `/docs`
+- OpenAPI JSON: `/openapi.json`
 
-## Notes
+If you need behavioral conventions beyond the spec, see `apps/server/docs/API.md`.
 
-Monorepo scripts live in the root `package.json` (`pnpm dev:server`, `pnpm dev:client`).
+## Docs Index
+
+- Deployment: `docs/DEPLOYMENT.md`
+- Server:
+  - `apps/server/README.md` (service overview and local run)
+  - `apps/server/docs/README.md` (knowledge base index: architecture, auth, DB, SSE, errors, security)
+  - `apps/server/docs/TROUBLESHOOTING.md` (common issues and checklists)
+- Client:
+  - `apps/client/README.md` (app overview and local run)
+  - `apps/client/docs/README.md` (knowledge base index: architecture, routing, auth, state/data, SSE, errors, UI, troubleshooting)
+  - `apps/client/docs/TROUBLESHOOTING.md` (common issues and checklists)
+
+## Root Scripts
+
+- `pnpm dev:server` — run API (port `8080` by default)
+- `pnpm dev:client` — run SPA (Vite dev server)
+- `pnpm lint` — lint the repo
+- `pnpm format` — format the repo

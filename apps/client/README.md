@@ -1,88 +1,61 @@
 # AI Idea Ranker — Client (React SPA)
 
-This directory contains the **frontend** for the AI Idea Ranker test assignment.
+Frontend for AI Idea Ranker. A Vite-powered React SPA that:
+- authenticates via Supabase on the client
+- calls the server via REST (JSON)
+- uses SSE for streaming progress for long-running AI operations
+- renders generated artifacts as Markdown (with citations)
 
-The client is a **React SPA (no Next.js)** built with **Vite** and TypeScript.  
-It communicates with the Express API using:
+## Table of Contents
 
-- **REST (JSON)** for standard operations (CRUD, run creation, artifact generation).
-- **SSE (Server-Sent Events)** for streaming progress during long AI operations.
+- [Local Development](#local-development)
+- [Configuration](#configuration)
+- [Architecture](#architecture)
+- [Deployment](#deployment)
+- [Docs](#docs)
 
-Authentication is performed via **Supabase Auth** on the client. The server validates the Supabase JWT for every request via:
+## Local Development
 
-`Authorization: Bearer <access_token>`
+From the repo root:
 
-## Stack (Approved)
-
-### Core
-- React `19.2.0`
-- TypeScript `~5.9.3`
-- Vite `^7.2.4`
-- React Router DOM `^7.12.0`
-
-### UI
-- Tailwind CSS `^4.1.18` via `@tailwindcss/vite`
-- shadcn/ui (CLI `^3.7.0`) + Radix primitives
-- `lucide-react` icons
-- `sonner` for toasts
-- `react-markdown` + `remark-gfm` for rendering artifacts
-
-### Data / Networking
-- **Native `fetch`** + a small shared wrapper (**no Axios**)
-- `@tanstack/react-query` for server state
-- `@microsoft/fetch-event-source` for SSE with Authorization headers
-- `zod` + `react-hook-form` for form validation
-- (Optional) `@tanstack/react-table` for score tables and version lists
-
-### Reliability
-- `react-error-boundary` for top-level error boundaries
-
-### Design/Scaffolding Tooling
-- **v0 by Vercel** is used to scaffold UI quickly (layout/cards/tables/forms).
-  - Use it ONLY for UI scaffolding.
-  - Replace any inline networking with our `shared/api` layer + React Query.
-
-## Installed Dependencies (Pinned by package.json)
-
-See `docs/DEV_GUIDE.md` for the exact dependency list and rules.
-
-## Environment Variables
-
-Create `apps/client/.env`:
-
+1) Install deps:
 ```bash
-VITE_API_BASE_URL=http://localhost:8080
-VITE_SUPABASE_URL=YOUR_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+pnpm install
 ```
+
+2) Configure env:
+- copy `apps/client/.env.example` → `apps/client/.env`
+
+3) Run:
+```bash
+pnpm dev:client
+```
+
+4) Open:
+- `http://localhost:3000`
+
+## Configuration
+
+Client env vars (see `apps/client/.env.example`):
+- `VITE_API_BASE_URL` (e.g. `http://localhost:8080`)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 Notes:
-- Supabase **anon** key is safe to expose in client apps (it is not a secret).
-- Never commit `.env` files.
+- `VITE_*` vars are embedded at build time (Vercel: redeploy after changes).
+- Supabase **anon** key is safe to expose in client apps; never expose Service Role keys.
 
-## Development
+## Architecture
 
-From repo root:
+High-level structure (FSD-lite):
+`shared → entities → features → pages → app`
 
-```bash
-pnpm -C apps/client dev
-```
+Details live in `apps/client/docs/ARCHITECTURE.md`.
 
-## Key Product Flow (User Perspective)
+## Deployment
 
-1. User signs in/up (Supabase).
-2. User creates a Project (name + constraints: budget and team).
-3. User imports Ideas (text/markdown).
-4. User uploads a Playbook (text/markdown) which is chunked & embedded on the server.
-5. User runs “Score & Rank” (Run) with weights/topN; server streams scoring progress.
-6. User generates Artifacts (30-60-90 plan + Experiment Card); server streams progress.
-7. User reviews artifacts (all versions) rendered as markdown with citations.
+Vercel deployment notes are in `docs/DEPLOYMENT.md` (repo root).
 
-## Conventions (Non‑negotiables)
+## Docs
 
-- TypeScript everywhere.
-- **No Axios, no tRPC.**
-- React Query owns server state.
-- SSE used for progress UX; always close streams on unmount.
-- Keep code modular: `shared` → `entities` → `features` → `pages`.
-- Comments must be **English only**.
+Start here: `apps/client/docs/README.md`.

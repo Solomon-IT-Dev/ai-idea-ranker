@@ -1,51 +1,35 @@
-# Server API Notes (MVP)
+# API Integration Notes
 
-This document complements the OpenAPI spec (`/openapi.json`) with a few practical
-client-facing conventions.
+The authoritative API reference is the server OpenAPI spec / Swagger UI:
+- Swagger UI: `GET /docs`
+- OpenAPI JSON: `GET /openapi.json`
 
-## Auth
+This document captures a few integration conventions that the client relies on.
 
-All protected endpoints require:
+## Auth Header
 
-```
-Authorization: Bearer <ACCESS_TOKEN>
-```
+Protected requests expect:
+`Authorization: Bearer <ACCESS_TOKEN>`
 
-## Projects
+## Error Shape
 
-### List projects
-
-`GET /v1/projects`
-
-- Auth: required
-- Response: `200`
-
+Error responses use a stable JSON shape:
 ```json
-{ "projects": [] }
+{ "status": "fail|error", "errorType": "string", "message": "string", "requestId": "string", "debug": {} }
 ```
 
 Notes:
-- When the user has no projects, the API returns `200` with an empty array (not
-  `404`).
-- Ordering: newest first (`created_at DESC`).
+- `requestId` is included in error responses for log correlation.
+- `debug` is only included outside production.
 
-### Create project
+## List Responses
 
-`POST /v1/projects`
+For collection endpoints, the API returns `200` with an empty array when there are no results (not
+`404`). Responses prefer stable shapes (e.g. `{ projects: [] }`) to simplify client empty states.
 
-- Auth: required
-- Body:
+## Streaming (SSE)
 
-```json
-{ "name": "string", "constraints": { "budget": 0, "team": { "fe": 1, "be": 1 } } }
-```
+Long-running operations stream progress via SSE (`text/event-stream`).
 
-- Response: `201`
-
-### Get project by id
-
-`GET /v1/projects/:id`
-
-- Auth: required
-- Response: `200` (or `404 project_not_found`)
-
+Events currently emitted include:
+- `stream.open`, `run.snapshot`, `run.started`, `idea.scored`, `plan.progress`, `run.completed`, `run.failed`
