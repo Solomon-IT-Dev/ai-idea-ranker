@@ -187,7 +187,12 @@ export function RunDetailsPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">Run details</h2>
-              <p className="text-sm text-muted-foreground">runId: {rid}</p>
+              <p className="text-sm text-muted-foreground">
+                runId:{' '}
+                <Badge variant="secondary" className="font-mono">
+                  {rid}
+                </Badge>
+              </p>
             </div>
 
             <div className="space-y-2 text-sm">

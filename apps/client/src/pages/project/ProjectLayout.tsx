@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/shared/ui/alert-dialog'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
@@ -102,7 +103,12 @@ export function ProjectLayout() {
       <div className="mx-auto max-w-5xl space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">projectId: {projectId}</p>
+            <p className="text-sm text-muted-foreground">
+              projectId:{' '}
+              <Badge variant="secondary" className="font-mono">
+                {projectId}
+              </Badge>
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">

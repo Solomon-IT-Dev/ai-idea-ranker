@@ -92,7 +92,9 @@ export function ProjectsPage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Projects</h1>
-            <p className="text-sm text-muted-foreground">Signed in as {user?.email ?? 'unknown'}</p>
+            <p className="text-sm text-muted-foreground">
+              Signed in as <span className="font-medium text-foreground">{user?.email ?? 'unknown'}</span>
+            </p>
           </div>
 
           <div className="flex items-center gap-2">

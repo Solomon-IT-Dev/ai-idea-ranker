@@ -8,6 +8,7 @@ import { PlaybookEditor } from '@/features/playbook/PlaybookEditor'
 import { PlaybookSearchTest } from '@/features/playbook/PlaybookSearchTest'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { copyToClipboard } from '@/shared/lib/clipboard'
+import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { ErrorState } from '@/shared/ui/error-state'
@@ -197,8 +198,11 @@ function ChunkRow({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">
           <div className="text-sm font-medium">{title}</div>
-          <div className="text-xs text-muted-foreground">
-            #{chunk.chunk_index} · {chunk.id}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>chunkId</span>
+            <Badge variant="secondary" className="font-mono">
+              {chunk.id}
+            </Badge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
