@@ -209,10 +209,21 @@ function VersionsList({
           .join(' ')
 
         return (
-          <button type="button" key={a.id} className={classes} onClick={() => onSelect(a.id)}>
+          <button
+            key={a.id}
+            className={classes}
+            type="button"
+            onClick={() => onSelect(a.id)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect(a.id)
+              }
+            }}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <div className="text-sm font-medium">
                     {a.type === 'plan_30_60_90' ? 'Plan' : 'Experiment Card'}
                   </div>
@@ -252,7 +263,12 @@ function ArtifactActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon-sm" aria-label={`${label} actions`}>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label={`${label} actions`}
+          disabled={!canCopy}
+        >
           <MoreHorizontal />
         </Button>
       </DropdownMenuTrigger>
@@ -699,197 +715,257 @@ export function ProjectArtifactsTab() {
                 isRetrying={listQuery.isFetching}
               />
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-4">
                 <Card className="p-4">
                   <div className="space-y-3">
-                    <div className="text-sm font-semibold">Plan versions</div>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold">Versions</div>
+                        <p className="text-sm text-muted-foreground">
+                          Click a version to select it for comparison with the latest. Selected
+                          actions apply to what you picked below.
+                        </p>
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!selectedPlan && !selectedCard}
+                          >
+                            Selected actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Selected</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            disabled={!selectedPlan && !selectedCard}
+                            onSelect={e => {
+                              e.preventDefault()
+                              void onCopy(
+                                buildBundleMd({
+                                  title: `Artifacts (selected) — run ${runId}`,
+                                  plan: selectedPlan ? { md: selectedPlan.content_markdown } : null,
+                                  card: selectedCard ? { md: selectedCard.content_markdown } : null,
+                                })
+                              )
+                            }}
+                          >
+                            Copy selected
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!selectedPlan && !selectedCard}
+                            onSelect={e => {
+                              e.preventDefault()
+                              onExport(
+                                `artifacts-${runId}-selected.md`,
+                                buildBundleMd({
+                                  title: `Artifacts (selected) — run ${runId}`,
+                                  plan: selectedPlan ? { md: selectedPlan.content_markdown } : null,
+                                  card: selectedCard ? { md: selectedCard.content_markdown } : null,
+                                })
+                              )
+                            }}
+                          >
+                            Export selected
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem
+                            disabled={!selectedPlan && !selectedCard}
+                            onSelect={e => {
+                              e.preventDefault()
+                              setSelectedVersionByType({
+                                plan_30_60_90: null,
+                                experiment_card: null,
+                              })
+                            }}
+                          >
+                            Clear selection
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
                     <Separator />
-                    <VersionsList
-                      artifacts={byType.plan_30_60_90}
-                      selectedId={selectedVersionByType.plan_30_60_90}
-                      latestId={latestPlanId}
-                      onSelect={id => onSelectVersion('plan_30_60_90', id)}
-                    />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-3">
+                        <div className="text-sm font-semibold">Plan versions</div>
+                        <VersionsList
+                          artifacts={byType.plan_30_60_90}
+                          selectedId={selectedVersionByType.plan_30_60_90}
+                          latestId={latestPlanId}
+                          onSelect={id => onSelectVersion('plan_30_60_90', id)}
+                        />
+                      </div>
+
+                      <div className="space-y-3 md:border-l md:pl-4">
+                        <div className="text-sm font-semibold">Experiment Card versions</div>
+                        <VersionsList
+                          artifacts={byType.experiment_card}
+                          selectedId={selectedVersionByType.experiment_card}
+                          latestId={latestCardId}
+                          onSelect={id => onSelectVersion('experiment_card', id)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </Card>
 
                 <Card className="p-4">
-                  <div className="space-y-3">
-                    <div className="text-sm font-semibold">Experiment Card versions</div>
-                    <Separator />
-                    <VersionsList
-                      artifacts={byType.experiment_card}
-                      selectedId={selectedVersionByType.experiment_card}
-                      latestId={latestCardId}
-                      onSelect={id => onSelectVersion('experiment_card', id)}
-                    />
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold">Compare</div>
+                      <p className="text-sm text-muted-foreground">
+                        Latest is the most recent artifact for this run. Selected is what you picked
+                        from the version lists.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator className="my-3" />
+
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <div className="text-sm font-semibold">30-60-90 Plan</div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">Latest</div>
+                            <ArtifactActionsMenu
+                              label="Latest plan"
+                              canCopy={Boolean(latestPlan)}
+                              onCopy={() => void onCopy(latestPlan?.content_markdown ?? null)}
+                              onExport={() =>
+                                onExport(
+                                  `artifact-plan-${runId}-${latestPlan?.id ?? 'latest'}.md`,
+                                  latestPlan?.content_markdown ?? null
+                                )
+                              }
+                            />
+                          </div>
+                          {latestQuery.isLoading ? (
+                            <div className="h-72 animate-pulse rounded-md bg-muted" />
+                          ) : latestPlan ? (
+                            <ArtifactMarkdown
+                              title="Latest"
+                              md={latestPlan.content_markdown}
+                              projectId={pid}
+                              variant="latest"
+                            />
+                          ) : (
+                            <Card className="p-4">
+                              <p className="text-sm text-muted-foreground">No latest plan yet.</p>
+                            </Card>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">Selected</div>
+                            <ArtifactActionsMenu
+                              label="Selected plan"
+                              canCopy={Boolean(selectedPlan)}
+                              onCopy={() => void onCopy(selectedPlan?.content_markdown ?? null)}
+                              onExport={() =>
+                                onExport(
+                                  `artifact-plan-${runId}-${selectedPlan?.id ?? 'selected'}.md`,
+                                  selectedPlan?.content_markdown ?? null
+                                )
+                              }
+                            />
+                          </div>
+                          {selectedPlan ? (
+                            <ArtifactMarkdown
+                              title="Selected"
+                              md={selectedPlan.content_markdown}
+                              projectId={pid}
+                              variant="selected"
+                            />
+                          ) : (
+                            <Card className="p-4">
+                              <p className="text-sm text-muted-foreground">
+                                Select a plan version to compare.
+                              </p>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="text-sm font-semibold">Experiment Card</div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">Latest</div>
+                            <ArtifactActionsMenu
+                              label="Latest card"
+                              canCopy={Boolean(latestCard)}
+                              onCopy={() => void onCopy(latestCard?.content_markdown ?? null)}
+                              onExport={() =>
+                                onExport(
+                                  `artifact-experiment-card-${runId}-${latestCard?.id ?? 'latest'}.md`,
+                                  latestCard?.content_markdown ?? null
+                                )
+                              }
+                            />
+                          </div>
+                          {latestQuery.isLoading ? (
+                            <div className="h-72 animate-pulse rounded-md bg-muted" />
+                          ) : latestCard ? (
+                            <ArtifactMarkdown
+                              title="Latest"
+                              md={latestCard.content_markdown}
+                              projectId={pid}
+                              variant="latest"
+                            />
+                          ) : (
+                            <Card className="p-4">
+                              <p className="text-sm text-muted-foreground">No latest card yet.</p>
+                            </Card>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-muted-foreground">Selected</div>
+                            <ArtifactActionsMenu
+                              label="Selected card"
+                              canCopy={Boolean(selectedCard)}
+                              onCopy={() => void onCopy(selectedCard?.content_markdown ?? null)}
+                              onExport={() =>
+                                onExport(
+                                  `artifact-experiment-card-${runId}-${selectedCard?.id ?? 'selected'}.md`,
+                                  selectedCard?.content_markdown ?? null
+                                )
+                              }
+                            />
+                          </div>
+                          {selectedCard ? (
+                            <ArtifactMarkdown
+                              title="Selected"
+                              md={selectedCard.content_markdown}
+                              projectId={pid}
+                              variant="selected"
+                            />
+                          ) : (
+                            <Card className="p-4">
+                              <p className="text-sm text-muted-foreground">
+                                Select a card version to compare.
+                              </p>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </Card>
               </div>
             )}
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Latest vs Selected</div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      void onCopy(
-                        buildBundleMd({
-                          title: `Artifacts (selected) — run ${runId}`,
-                          plan: selectedPlan ? { md: selectedPlan.content_markdown } : null,
-                          card: selectedCard ? { md: selectedCard.content_markdown } : null,
-                        })
-                      )
-                    }
-                    disabled={!selectedPlan && !selectedCard}
-                  >
-                    Copy selected
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      onExport(
-                        `artifacts-${runId}-selected.md`,
-                        buildBundleMd({
-                          title: `Artifacts (selected) — run ${runId}`,
-                          plan: selectedPlan ? { md: selectedPlan.content_markdown } : null,
-                          card: selectedCard ? { md: selectedCard.content_markdown } : null,
-                        })
-                      )
-                    }
-                    disabled={!selectedPlan && !selectedCard}
-                  >
-                    Export selected
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
-                    }
-                    disabled={!selectedPlan && !selectedCard}
-                  >
-                    Clear selection
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Plan</div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void onCopy(selectedPlan?.content_markdown ?? null)}
-                        disabled={!selectedPlan}
-                      >
-                        Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          onExport(
-                            `artifact-plan-${runId}-${selectedPlan?.id ?? 'selected'}.md`,
-                            selectedPlan?.content_markdown ?? null
-                          )
-                        }
-                        disabled={!selectedPlan}
-                      >
-                        Export
-                      </Button>
-                    </div>
-                  </div>
-                  {latestPlan ? (
-                    <ArtifactMarkdown
-                      title="Latest"
-                      md={latestPlan.content_markdown}
-                      projectId={pid}
-                      variant="latest"
-                    />
-                  ) : (
-                    <Card className="p-4">
-                      <p className="text-sm text-muted-foreground">No latest plan yet.</p>
-                    </Card>
-                  )}
-                  {selectedPlan ? (
-                    <ArtifactMarkdown
-                      title="Selected"
-                      md={selectedPlan.content_markdown}
-                      projectId={pid}
-                      variant="selected"
-                    />
-                  ) : (
-                    <Card className="p-4">
-                      <p className="text-sm text-muted-foreground">
-                        Select a plan version to compare.
-                      </p>
-                    </Card>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Experiment Card</div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void onCopy(selectedCard?.content_markdown ?? null)}
-                        disabled={!selectedCard}
-                      >
-                        Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          onExport(
-                            `artifact-experiment-card-${runId}-${selectedCard?.id ?? 'selected'}.md`,
-                            selectedCard?.content_markdown ?? null
-                          )
-                        }
-                        disabled={!selectedCard}
-                      >
-                        Export
-                      </Button>
-                    </div>
-                  </div>
-                  {latestCard ? (
-                    <ArtifactMarkdown
-                      title="Latest"
-                      md={latestCard.content_markdown}
-                      projectId={pid}
-                      variant="latest"
-                    />
-                  ) : (
-                    <Card className="p-4">
-                      <p className="text-sm text-muted-foreground">No latest card yet.</p>
-                    </Card>
-                  )}
-                  {selectedCard ? (
-                    <ArtifactMarkdown
-                      title="Selected"
-                      md={selectedCard.content_markdown}
-                      projectId={pid}
-                      variant="selected"
-                    />
-                  ) : (
-                    <Card className="p-4">
-                      <p className="text-sm text-muted-foreground">
-                        Select a card version to compare.
-                      </p>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            </div>
           </TabsContent>
         </Tabs>
       )}
