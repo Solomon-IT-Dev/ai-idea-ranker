@@ -100,7 +100,12 @@ export function ProjectPlaybookTab() {
 
   return (
     <div className="space-y-4">
-      <PlaybookEditor initial={pbQuery.data ?? null} onSave={onSave} isPending={upsert.isPending} />
+      <PlaybookEditor
+        projectId={pid}
+        initial={pbQuery.data ?? null}
+        onSave={onSave}
+        isPending={upsert.isPending}
+      />
 
       <PlaybookSearchTest projectId={pid} hasChunks={chunks.length > 0} />
 
