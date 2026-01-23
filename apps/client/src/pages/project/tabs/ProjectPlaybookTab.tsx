@@ -141,7 +141,7 @@ function ChunksCard({
           <div className="space-y-1">
             <h3 className="text-base font-semibold">Chunks</h3>
             <p className="text-sm text-muted-foreground">
-              Advanced view: these are server-generated chunks used for citations. Artifact “Sources”
+              Chunks are generated from your playbook and used for citations. Artifact “Sources”
               links jump here so you can verify what the model referenced.
             </p>
           </div>
@@ -155,7 +155,9 @@ function ChunksCard({
         <Separator />
 
         {chunks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No chunks yet. Upload a playbook first.</p>
+          <p className="text-sm text-muted-foreground">
+            No chunks yet. Upload a playbook to generate them.
+          </p>
         ) : (
           <div className="space-y-3">
             {chunks.map(c => (
@@ -199,7 +201,7 @@ function ChunkRow({
         <div className="space-y-1">
           <div className="text-sm font-medium">{title}</div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>chunkId</span>
+            <span>Сhunk ID</span>
             <Badge variant="secondary" className="font-mono">
               {chunk.id}
             </Badge>

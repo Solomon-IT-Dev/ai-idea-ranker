@@ -15,7 +15,7 @@ export function ProjectIdeasTab() {
   const ideasQuery = useIdeas(pid)
   const importMutation = useImportIdeas(pid)
 
-  useToastQueryError(ideasQuery.isError, ideasQuery.error, 'Failed to load ideas.')
+  useToastQueryError(ideasQuery.isError, ideasQuery.error, 'Couldn’t load ideas.')
 
   async function onImport(text: string) {
     try {
@@ -23,7 +23,7 @@ export function ProjectIdeasTab() {
       const imported = res.insertedCount ?? res.ideas.length
       toast.success(`Imported ${imported} ideas.`)
     } catch (e) {
-      toast.error('Failed to import ideas.')
+      toast.error('Couldn’t import ideas.')
 
       console.error(e)
     }

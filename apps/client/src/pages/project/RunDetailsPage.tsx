@@ -85,8 +85,8 @@ export function RunDetailsPage() {
       if (t === 'run.failed') {
         toast.error(
           isGeneratingArtifacts
-            ? 'Artifacts generation failed. Check errors.'
-            : 'Run failed. Check errors.'
+            ? 'Artifacts generation failed. See details above.'
+            : 'Run failed. See details above.'
         )
       }
     }
@@ -112,9 +112,9 @@ export function RunDetailsPage() {
       setPlanProgress(prev => [...prev, { stage, message, at: Date.now() }])
 
       // Optional lightweight UX hints
-      if (stage === 'artifacts.openai') toast.message('Artifacts: generating draft…')
-      if (stage === 'artifacts.render') toast.message('Artifacts: rendering markdown…')
-      if (stage === 'artifacts.persist') toast.message('Artifacts: saving…')
+      if (stage === 'artifacts.openai') toast.message('Generating artifacts…')
+      if (stage === 'artifacts.render') toast.message('Formatting artifacts…')
+      if (stage === 'artifacts.persist') toast.message('Saving artifacts…')
       if (stage === 'artifacts.done') void prefetchArtifacts()
     }
   }, [prefetchArtifacts, stream.lastEvent])
@@ -131,7 +131,7 @@ export function RunDetailsPage() {
     if (!pid || !rid) return
 
     if (run?.status !== 'completed') {
-      toast.error('Artifacts can be generated only after the run is completed.')
+      toast.error('Artifacts can be generated after the run is completed.')
       return
     }
 
@@ -157,7 +157,7 @@ export function RunDetailsPage() {
       <div className="mx-auto max-w-5xl space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Button variant="outline" onClick={() => navigate(`/projects/${pid}/runs`)}>
-            Back
+            Back to runs
           </Button>
 
           <div className="flex items-center justify-between gap-2 sm:justify-end">
@@ -186,9 +186,9 @@ export function RunDetailsPage() {
         <Card className="p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Run details</h2>
+              <h2 className="text-lg font-semibold">Run</h2>
               <p className="text-sm text-muted-foreground">
-                runId:{' '}
+                Run ID{' '}
                 <Badge variant="secondary" className="font-mono">
                   {rid}
                 </Badge>
@@ -198,12 +198,14 @@ export function RunDetailsPage() {
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <span>Status</span>
-                <Badge variant={statusBadgeVariant(run?.status)}>{run?.status ?? 'loading'}</Badge>
+                <Badge variant={statusBadgeVariant(run?.status)}>
+                  {formatRunStatusLabel(run?.status)}
+                </Badge>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2 text-muted-foreground">
-                <span>Stream</span>
+                <span>Live updates</span>
                 <Badge variant={stream.isConnected ? 'secondary' : 'destructive'}>
-                  {stream.isConnected ? 'connected' : 'disconnected'}
+                  {stream.isConnected ? 'Connected' : 'Disconnected'}
                 </Badge>
               </div>
             </div>
@@ -221,8 +223,8 @@ export function RunDetailsPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-muted-foreground">
               {run?.status !== 'completed'
-                ? 'Artifacts actions (available after the run is completed).'
-                : 'Artifacts actions.'}
+                ? 'Artifacts are available after the run is completed.'
+                : 'Artifacts are available for this run.'}
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -231,7 +233,7 @@ export function RunDetailsPage() {
                 onClick={() => navigate(`/projects/${pid}/artifacts?runId=${rid}`)}
                 disabled={!pid || !rid}
               >
-                Open Artifacts tab
+                Open artifacts
               </Button>
 
               <Button
@@ -243,7 +245,7 @@ export function RunDetailsPage() {
                   run?.status !== 'completed'
                 }
               >
-                Generate Plan + Experiment Card
+                Generate artifacts
               </Button>
             </div>
           </div>
@@ -251,18 +253,18 @@ export function RunDetailsPage() {
 
         <Card className="p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold">Progress</h3>
+            <h3 className="text-base font-semibold">Live progress</h3>
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setIsStreamEnabled(false)
                 stream.stop()
-                toast.message('Stream stopped. The run continues on the server.')
+                toast.message('Live updates paused. The run continues on the server.')
               }}
               disabled={runQuery.isFetching || !shouldStream}
             >
-              Stop stream
+              Stop live updates
             </Button>
           </div>
 
@@ -270,12 +272,12 @@ export function RunDetailsPage() {
             {stream.events.length === 0 ? (
               <div className="text-xs text-muted-foreground">
                 {run?.status === 'running' && !shouldStream
-                  ? 'Stream stopped (the run continues on the server).'
+                  ? 'Live updates are paused. The run is still running on the server.'
                   : run?.status === 'completed'
-                    ? 'Run completed. Live events are only available while streaming is enabled.'
+                    ? 'Run completed. Live events are only shown while live updates are enabled.'
                     : run?.status === 'failed'
-                      ? 'Run failed. No stream events available.'
-                      : 'No events yet.'}
+                      ? 'Run failed. No live events available.'
+                      : 'Waiting for the first event…'}
               </div>
             ) : (
               <ProgressEventsList events={stream.events} />
@@ -301,8 +303,9 @@ export function RunDetailsPage() {
 
           {planProgress.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Artifacts are generated after the run completes. Click “Generate Plan + Experiment
-              Card” to start.
+              {run?.status !== 'completed'
+                ? 'Available after the run is completed.'
+                : 'Click “Generate artifacts” to create a plan and an experiment card for this run.'}
             </p>
           ) : (
             <div className="max-h-48 space-y-2 overflow-auto rounded-md border p-3 text-xs">
@@ -354,7 +357,7 @@ export function RunDetailsPage() {
                 {scores.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-muted-foreground">
-                      No scores yet. If the run is running, wait for completion.
+                      No scores yet. If the run is running, they will appear after completion.
                     </TableCell>
                   </TableRow>
                 )}
@@ -376,6 +379,14 @@ function statusBadgeVariant(
   return 'outline'
 }
 
+function formatRunStatusLabel(status: string | undefined) {
+  if (!status) return 'Loading'
+  if (status === 'running') return 'Running'
+  if (status === 'completed') return 'Completed'
+  if (status === 'failed') return 'Failed'
+  return status
+}
+
 function ProgressEventsList({ events }: { events: Array<{ type: string; data: unknown }> }) {
   function format(e: { type: string; data: unknown }): {
     title: string
@@ -387,16 +398,16 @@ function ProgressEventsList({ events }: { events: Array<{ type: string; data: un
 
     if (e.type === 'stream.open') {
       return {
-        title: 'Live stream connected',
-        detail: `runId: ${d?.runId ?? ''}`,
+        title: 'Live updates connected',
+        detail: d?.runId ? `Run ID: ${String(d.runId)}` : undefined,
         badge: { text: 'SSE', variant: 'outline' },
       }
     }
 
     if (e.type === 'run.snapshot') {
       return {
-        title: 'Run status snapshot',
-        detail: `status: ${d?.status ?? 'unknown'}`,
+        title: 'Status update',
+        detail: d?.status ? `Status: ${formatRunStatusLabel(String(d.status))}` : undefined,
         badge: { text: 'snapshot', variant: 'secondary' },
       }
     }
@@ -410,7 +421,7 @@ function ProgressEventsList({ events }: { events: Array<{ type: string; data: un
       const message = d?.message ? String(d.message) : ''
       return {
         title: message || 'In progress…',
-        detail: stage !== 'progress' ? `stage: ${stage}` : undefined,
+        detail: stage !== 'progress' ? `Stage: ${stage}` : undefined,
         badge: { text: stage, variant: 'outline' },
       }
     }
@@ -420,7 +431,7 @@ function ProgressEventsList({ events }: { events: Array<{ type: string; data: un
       const overall = typeof d?.overall === 'number' ? Math.round(d.overall) : null
       return {
         title: 'Idea scored',
-        detail: `${ideaId ? `ideaId: ${ideaId.slice(0, 8)}…` : ''}${overall != null ? ` · overall: ${overall}` : ''}`,
+        detail: `${ideaId ? `Idea ID: ${ideaId.slice(0, 8)}…` : ''}${overall != null ? ` · Overall: ${overall}` : ''}`,
         badge: { text: 'score', variant: 'secondary' },
       }
     }

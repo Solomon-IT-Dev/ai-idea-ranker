@@ -446,7 +446,7 @@ export function ProjectArtifactsTab() {
     <div className="space-y-4">
       {!pid ? (
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Missing projectId.</p>
+          <p className="text-sm text-muted-foreground">Project is not selected.</p>
         </Card>
       ) : (
         <Card className="p-4">
@@ -454,7 +454,7 @@ export function ProjectArtifactsTab() {
             <div>
               <h2 className="text-base font-semibold">Artifacts</h2>
               <p className="text-sm text-muted-foreground">
-                View latest artifacts and compare them with any historical version.
+                View the latest artifacts and compare them with previous versions.
               </p>
             </div>
 
@@ -466,7 +466,7 @@ export function ProjectArtifactsTab() {
                 <Select value={runId} onValueChange={onPickRun} disabled={!pid}>
                   <SelectTrigger>
                     <SelectValue
-                      placeholder={runsQuery.isLoading ? 'Loading runs…' : 'Select a run'}
+                      placeholder={runsQuery.isLoading ? 'Loading runs…' : 'Choose a run'}
                     />
                   </SelectTrigger>
                   <SelectContent>
@@ -505,10 +505,10 @@ export function ProjectArtifactsTab() {
         />
       ) : null}
 
-      {!pid || !runId ? (
+              {!pid || !runId ? (
         <Card className="p-4">
           <p className="text-sm text-muted-foreground">
-            {pid ? 'Select a run to view artifacts.' : 'Select a project to view artifacts.'}
+            {pid ? 'Choose a run to view artifacts.' : 'Select a project to view artifacts.'}
           </p>
         </Card>
       ) : (
@@ -540,14 +540,14 @@ export function ProjectArtifactsTab() {
                     <div className="space-y-1">
                       <div className="text-sm font-semibold">Latest artifacts</div>
                       <p className="text-sm text-muted-foreground">
-                        View the most recent plan and experiment card for this run.
+                        The most recent plan and experiment card for this run.
                       </p>
                     </div>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
-                          Actions
+                          Copy / export
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -565,7 +565,7 @@ export function ProjectArtifactsTab() {
                             )
                           }}
                         >
-                          Copy all
+                          Copy both
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={!latestPlan && !latestCard}
@@ -581,7 +581,7 @@ export function ProjectArtifactsTab() {
                             )
                           }}
                         >
-                          Export all
+                          Export both
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator />
@@ -594,7 +594,7 @@ export function ProjectArtifactsTab() {
                             void onCopy(latestPlan?.content_markdown ?? null)
                           }}
                         >
-                          Copy plan
+                          Copy
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={!latestPlan}
@@ -606,7 +606,7 @@ export function ProjectArtifactsTab() {
                             )
                           }}
                         >
-                          Export plan
+                          Export
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator />
@@ -619,7 +619,7 @@ export function ProjectArtifactsTab() {
                             void onCopy(latestCard?.content_markdown ?? null)
                           }}
                         >
-                          Copy card
+                          Copy
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={!latestCard}
@@ -631,7 +631,7 @@ export function ProjectArtifactsTab() {
                             )
                           }}
                         >
-                          Export card
+                          Export
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -663,7 +663,7 @@ export function ProjectArtifactsTab() {
                       />
                     ) : (
                       <Card className="p-4">
-                        <p className="text-sm text-muted-foreground">No plan artifact yet.</p>
+                        <p className="text-sm text-muted-foreground">No plan yet.</p>
                       </Card>
                     )}
                   </div>
@@ -722,8 +722,7 @@ export function ProjectArtifactsTab() {
                       <div className="space-y-1">
                         <div className="text-sm font-semibold">Versions</div>
                         <p className="text-sm text-muted-foreground">
-                          Click a version to select it for comparison with the latest. Selected
-                          actions apply to what you picked below.
+                          Select versions below to compare them with the latest.
                         </p>
                       </div>
 
@@ -818,10 +817,10 @@ export function ProjectArtifactsTab() {
                 <Card className="p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="text-sm font-semibold">Compare</div>
+                      <div className="text-sm font-semibold">Compare with latest</div>
                       <p className="text-sm text-muted-foreground">
-                        Latest is the most recent artifact for this run. Selected is what you picked
-                        from the version lists.
+                        Latest is the most recent artifact for this run. Selected comes from the
+                        lists above.
                       </p>
                     </div>
                   </div>

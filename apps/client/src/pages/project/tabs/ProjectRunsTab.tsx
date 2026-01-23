@@ -34,6 +34,14 @@ function statusBadgeVariant(
   return 'outline'
 }
 
+function formatRunStatusLabel(status: string | undefined) {
+  if (!status) return 'Loading'
+  if (status === 'running') return 'Running'
+  if (status === 'completed') return 'Completed'
+  if (status === 'failed') return 'Failed'
+  return status
+}
+
 export function ProjectRunsTab() {
   const { projectId } = useParams()
   const navigate = useNavigate()
@@ -68,7 +76,7 @@ export function ProjectRunsTab() {
         },
       })
 
-      toast.success('Run started.')
+      toast.success('Run started. Opening details…')
       navigate(`/projects/${pid}/runs/${res.run.id}`)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
@@ -83,7 +91,7 @@ export function ProjectRunsTab() {
           <div className="space-y-1">
             <h2 className="text-lg font-semibold">Runs</h2>
             <p className="text-sm text-muted-foreground">
-              Start a scoring run (uses playbook RAG for citations) and track progress via SSE.
+              Start a scoring run and watch live progress. Citations are based on your playbook.
             </p>
           </div>
         </div>
@@ -124,7 +132,7 @@ export function ProjectRunsTab() {
 
       <Card className="p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold">History</h3>
+          <h3 className="text-base font-semibold">Run history</h3>
           <Button
             variant="outline"
             onClick={() => runsQuery.refetch()}
@@ -165,7 +173,9 @@ export function ProjectRunsTab() {
                         {new Date(r.created_at).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>
+                        <Badge variant={statusBadgeVariant(r.status)}>
+                          {formatRunStatusLabel(r.status)}
+                        </Badge>
                       </TableCell>
                       <TableCell>{r.model}</TableCell>
                       <TableCell>{r.top_n}</TableCell>
@@ -175,7 +185,7 @@ export function ProjectRunsTab() {
                           variant="outline"
                           onClick={() => navigate(`/projects/${pid}/runs/${r.id}`)}
                         >
-                          Open
+                          Details
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -184,7 +194,7 @@ export function ProjectRunsTab() {
                   {sortedRuns.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-muted-foreground">
-                        No runs yet.
+                        No runs yet. Start your first run above.
                       </TableCell>
                     </TableRow>
                   )}

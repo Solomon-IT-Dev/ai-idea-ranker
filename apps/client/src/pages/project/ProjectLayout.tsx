@@ -104,7 +104,7 @@ export function ProjectLayout() {
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">
-              projectId:{' '}
+              Project ID:{' '}
               <Badge variant="secondary" className="font-mono">
                 {projectId}
               </Badge>
