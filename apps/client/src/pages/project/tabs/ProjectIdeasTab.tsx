@@ -9,7 +9,6 @@ import { ErrorState } from '@/shared/ui/error-state'
 
 export function ProjectIdeasTab() {
   const { projectId } = useParams()
-
   const pid = projectId ?? ''
 
   const ideasQuery = useIdeas(pid)

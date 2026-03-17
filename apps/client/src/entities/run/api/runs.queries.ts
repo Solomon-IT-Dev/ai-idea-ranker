@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { getRun, listRuns, startRun } from './runs.api'
 
+import type { RunWeights } from '@/entities/run/types/run'
+
 export const runKeys = {
   all: (projectId: string) => ['runs', projectId] as const,
   byId: (projectId: string, runId: string) => ['runs', projectId, runId] as const,
@@ -27,8 +29,8 @@ export function useRun(projectId: string, runId: string) {
 export function useStartRun(projectId: string) {
   const qc = useQueryClient()
   return useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mutationFn: (body: { topN?: number; weights?: any }) => startRun(projectId, body),
+    mutationFn: (body: { topN?: number; weights?: Partial<RunWeights> }) =>
+      startRun(projectId, body),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: runKeys.all(projectId) })
     },

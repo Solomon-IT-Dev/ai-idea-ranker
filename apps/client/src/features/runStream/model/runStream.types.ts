@@ -1,11 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Json } from '@/shared/types/json'
+
+export type RunStreamEventType =
+  | 'stream.open'
+  | 'run.snapshot'
+  | 'run.started'
+  | 'run.sources_ready'
+  | 'idea.scored'
+  | 'plan.progress'
+  | 'run.completed'
+  | 'run.failed'
+
 export type RunStreamEvent =
-  | { type: 'stream.open'; data: any }
-  | { type: 'run.snapshot'; data: any }
-  | { type: 'run.started'; data: any }
-  | { type: 'run.sources_ready'; data: any }
-  | { type: 'idea.scored'; data: any }
-  | { type: 'plan.progress'; data: any }
-  | { type: 'run.completed'; data: any }
-  | { type: 'run.failed'; data: any }
-  | { type: 'unknown'; data: any; eventName?: string }
+  | { type: RunStreamEventType; data: Json | string }
+  | { type: 'unknown'; data: Json | string; eventName?: string }

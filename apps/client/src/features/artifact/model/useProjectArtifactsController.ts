@@ -4,11 +4,12 @@ import { toast } from 'sonner'
 
 import { useArtifactsLatest, useArtifactsList } from '@/entities/artifact/api/artifacts.queries'
 import { groupArtifactsByType } from '@/entities/artifact/lib/artifactGrouping'
-import type { Artifact, ArtifactType, VersionsByType } from '@/entities/artifact/types/artifact'
+import type { ArtifactType, VersionsByType } from '@/entities/artifact/types/artifact'
 import { useRuns } from '@/entities/run/api/runs.queries'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { copyToClipboard } from '@/shared/lib/clipboard'
 import { downloadTextFile } from '@/shared/lib/download'
+import { setSearchParam } from '@/shared/lib/searchParams'
 import { getArtifactsLastRunId, setArtifactsLastRunId } from '@/shared/lib/storage'
 
 export function useProjectArtifactsController(projectId: string) {
@@ -53,14 +54,7 @@ export function useProjectArtifactsController(projectId: string) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRunId(candidate)
     setArtifactsLastRunId(projectId, candidate)
-    setSearchParams(
-      prev => {
-        const next = new URLSearchParams(prev)
-        next.set('runId', candidate)
-        return next
-      },
-      { replace: true }
-    )
+    setSearchParam(setSearchParams, 'runId', candidate)
   }, [projectId, runId, runs, runsQuery.isLoading, setSearchParams])
 
   function pickRun(value: string) {
@@ -68,14 +62,7 @@ export function useProjectArtifactsController(projectId: string) {
     setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
     if (projectId) setArtifactsLastRunId(projectId, value)
 
-    setSearchParams(
-      prev => {
-        const next = new URLSearchParams(prev)
-        next.set('runId', value)
-        return next
-      },
-      { replace: true }
-    )
+    setSearchParam(setSearchParams, 'runId', value)
   }
 
   function selectVersion(type: ArtifactType, id: string) {
@@ -165,11 +152,4 @@ export function useProjectArtifactsController(projectId: string) {
       await Promise.all([latestQuery.refetch(), listQuery.refetch()])
     },
   }
-}
-
-export type ProjectArtifactsController = ReturnType<typeof useProjectArtifactsController>
-
-export type ArtifactPair = {
-  plan?: Artifact | null
-  card?: Artifact | null
 }

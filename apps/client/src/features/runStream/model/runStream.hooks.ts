@@ -5,8 +5,9 @@ import { toast } from 'sonner'
 import { routes } from '@/entities/run/api/runs.routes'
 import { env } from '@/shared/lib/env'
 import { supabase } from '@/shared/lib/supabase'
+import type { Json } from '@/shared/types/json'
 
-import type { RunStreamEvent } from './runStream.types'
+import type { RunStreamEvent, RunStreamEventType } from './runStream.types'
 
 function safeParseJson(data: string) {
   try {
@@ -16,24 +17,25 @@ function safeParseJson(data: string) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapToTypedEvent(eventName: string, data: any): RunStreamEvent {
-  const known = new Set([
-    'stream.open',
-    'run.snapshot',
-    'run.started',
-    'run.sources_ready',
-    'idea.scored',
-    'plan.progress',
-    'run.completed',
-    'run.failed',
-  ])
+const KNOWN_EVENT_TYPES: RunStreamEventType[] = [
+  'stream.open',
+  'run.snapshot',
+  'run.started',
+  'run.sources_ready',
+  'idea.scored',
+  'plan.progress',
+  'run.completed',
+  'run.failed',
+]
 
-  if (known.has(eventName)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return { type: eventName as any, data }
-  }
-  return { type: 'unknown', data, eventName }
+function isKnownEventType(value: string): value is RunStreamEventType {
+  return KNOWN_EVENT_TYPES.includes(value as RunStreamEventType)
+}
+
+function mapToTypedEvent(eventName: string, data: unknown): RunStreamEvent {
+  const payload = data as Json | string
+  if (isKnownEventType(eventName)) return { type: eventName, data: payload }
+  return { type: 'unknown', data: payload, eventName }
 }
 
 export function useRunStream(input: {
@@ -118,11 +120,11 @@ export function useRunStream(input: {
           },
           openWhenHidden: true,
         })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err) {
         if (abort.signal.aborted) return
         setIsConnected(false)
-        toast.error(err?.message ?? 'SSE connection error.')
+        const message = err instanceof Error ? err.message : 'SSE connection error.'
+        toast.error(message)
       }
     }
 

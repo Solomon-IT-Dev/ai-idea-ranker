@@ -7,7 +7,6 @@ import {
 import { useMemo } from 'react'
 
 import type { Idea } from '@/entities/idea/types/idea'
-
 import { IdeaRowActions } from '@/features/idea/IdeaRowActions'
 import { formatDateTime } from '@/shared/lib/date'
 import { truncateText } from '@/shared/lib/text'
@@ -28,11 +27,15 @@ export function IdeasTable({ ideas }: Props) {
       }),
       ch.accessor('raw_text', {
         header: 'Text',
-        cell: info => <span className="text-muted-foreground">{truncateText(info.getValue(), 120)}</span>,
+        cell: info => (
+          <span className="text-muted-foreground">{truncateText(info.getValue(), 120)}</span>
+        ),
       }),
       ch.accessor('created_at', {
         header: 'Created',
-        cell: info => <span className="text-muted-foreground">{formatDateTime(info.getValue())}</span>,
+        cell: info => (
+          <span className="text-muted-foreground">{formatDateTime(info.getValue())}</span>
+        ),
       }),
       ch.display({
         id: 'actions',

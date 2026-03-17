@@ -26,10 +26,9 @@ export function PlaybookSearchTest({ projectId, hasChunks = true }: Props & { ha
   async function submit(values: { query: string }) {
     try {
       await mutation.mutateAsync({ query: values.query, topK: 5, includeText: true })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      const msg = e?.message ?? 'Search failed.'
-      toast.error(msg)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Search failed.'
+      toast.error(message)
     }
   }
 

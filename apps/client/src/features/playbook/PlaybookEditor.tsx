@@ -5,7 +5,6 @@ import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 
 import type { GetPlaybookResponse } from '@/entities/playbook/types/playbook'
-
 import { formatDateTime } from '@/shared/lib/date'
 import { getPlaybookEditorMode, setPlaybookEditorMode } from '@/shared/lib/storage'
 import { Button } from '@/shared/ui/button'
@@ -148,7 +147,9 @@ export function PlaybookEditor({ projectId, initial, onSave, isPending }: Props)
           <div className="flex items-end justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm font-medium">Markdown</p>
-              <p className="text-xs text-muted-foreground">Switch to Preview to verify formatting.</p>
+              <p className="text-xs text-muted-foreground">
+                Switch to Preview to verify formatting.
+              </p>
             </div>
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="edit">Edit</TabsTrigger>
@@ -218,10 +219,9 @@ export function PlaybookEditor({ projectId, initial, onSave, isPending }: Props)
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const next =
-                    initial?.playbook?.content_markdown?.trim()
-                      ? initial.playbook.content_markdown
-                      : buildChunkText()
+                  const next = initial?.playbook?.content_markdown?.trim()
+                    ? initial.playbook.content_markdown
+                    : buildChunkText()
                   setValue('content', next)
                 }}
               >

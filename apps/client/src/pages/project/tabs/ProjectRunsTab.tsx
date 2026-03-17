@@ -33,9 +33,9 @@ export function ProjectRunsTab() {
 
       toast.success('Run started. Opening details…')
       navigate(`/projects/${pid}/runs/${res.run.id}`)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to start run.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to start run.'
+      toast.error(message)
     }
   }
 
