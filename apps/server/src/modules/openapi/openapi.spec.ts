@@ -15,7 +15,7 @@ export const openapiSpec = {
   },
   servers: [
     {
-      url: 'https://appsserver-production-d740.up.railway.app',
+      url: 'https://ai-idea-ranker-server.onrender.com',
       description: 'Production server (Render)',
     },
     {

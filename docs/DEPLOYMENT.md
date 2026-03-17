@@ -30,7 +30,7 @@ Render is configured via `render.yaml` at the repo root.
 
 Build/start commands (from `render.yaml`):
 
-- Build: `corepack enable && pnpm install --frozen-lockfile && pnpm -C apps/server build`
+- Build: `pnpm install --frozen-lockfile && pnpm -C apps/server build`
 - Start: `node apps/server/dist/index.js`
 
 Health check:

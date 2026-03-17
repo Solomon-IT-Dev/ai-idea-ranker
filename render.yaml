@@ -5,7 +5,7 @@ services:
     plan: free
     autoDeploy: true
     healthCheckPath: /health
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm -C apps/server build
+    buildCommand: pnpm install --frozen-lockfile && pnpm -C apps/server build
     startCommand: node apps/server/dist/index.js
     envVars:
       - key: NODE_ENV
