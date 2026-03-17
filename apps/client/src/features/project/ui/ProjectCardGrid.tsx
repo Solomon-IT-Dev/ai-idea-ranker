@@ -1,5 +1,4 @@
 import type { Project } from '@/entities/project/types/project'
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,7 +73,8 @@ export function ProjectCardGrid({
               Budget: ${project.constraints?.budget ?? 0}
             </div>
             <div className="text-sm text-muted-foreground">
-              Team: FE {project.constraints?.team?.fe ?? 0} • BE {project.constraints?.team?.be ?? 0}
+              Team: FE {project.constraints?.team?.fe ?? 0} • BE{' '}
+              {project.constraints?.team?.be ?? 0}
               {project.constraints?.team?.ds ? ` • DS ${project.constraints.team.ds}` : ''}
             </div>
           </CardContent>
