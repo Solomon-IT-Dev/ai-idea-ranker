@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { getRun, listRuns, startRun } from './runs.api'
-
 import type { RunWeights } from '@/entities/run/types/run'
+
+import { getRun, listRuns, startRun } from './runs.api'
 
 export const runKeys = {
   all: (projectId: string) => ['runs', projectId] as const,

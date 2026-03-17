@@ -16,7 +16,6 @@ export function useProjectArtifactsController(projectId: string) {
   const [searchParams, setSearchParams] = useSearchParams()
   const urlRunId = searchParams.get('runId') ?? ''
 
-  const [runId, setRunId] = useState<string>(urlRunId)
   const [selectedVersionByType, setSelectedVersionByType] = useState<
     Record<ArtifactType, string | null>
   >({
@@ -33,32 +32,26 @@ export function useProjectArtifactsController(projectId: string) {
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
   }, [runsQuery.data?.runs])
 
+  const runId = useMemo(() => {
+    if (urlRunId) return urlRunId
+    if (!projectId || runsQuery.isLoading || runs.length === 0) return ''
+
+    const stored = getArtifactsLastRunId(projectId)
+    return stored && runs.some(run => run.id === stored) ? stored : runs[0].id
+  }, [projectId, runs, runsQuery.isLoading, urlRunId])
+
   const latestQuery = useArtifactsLatest(projectId, runId, Boolean(projectId && runId))
   const listQuery = useArtifactsList(projectId, runId, Boolean(projectId && runId))
   useToastQueryError(latestQuery.isError, latestQuery.error, 'Failed to load latest artifacts.')
   useToastQueryError(listQuery.isError, listQuery.error, 'Failed to load artifact versions.')
 
   useEffect(() => {
-    if (!projectId || !urlRunId || urlRunId === runId) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRunId(urlRunId)
-    setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
-    setArtifactsLastRunId(projectId, urlRunId)
-  }, [projectId, runId, urlRunId])
-
-  useEffect(() => {
-    if (!projectId || runId || runsQuery.isLoading || runs.length === 0) return
-
-    const stored = getArtifactsLastRunId(projectId)
-    const candidate = stored && runs.some(run => run.id === stored) ? stored : runs[0].id
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRunId(candidate)
-    setArtifactsLastRunId(projectId, candidate)
-    setSearchParam(setSearchParams, 'runId', candidate)
-  }, [projectId, runId, runs, runsQuery.isLoading, setSearchParams])
+    if (!projectId || !runId) return
+    setArtifactsLastRunId(projectId, runId)
+    if (!urlRunId) setSearchParam(setSearchParams, 'runId', runId)
+  }, [projectId, runId, setSearchParams, urlRunId])
 
   function pickRun(value: string) {
-    setRunId(value)
     setSelectedVersionByType({ plan_30_60_90: null, experiment_card: null })
     if (projectId) setArtifactsLastRunId(projectId, value)
 

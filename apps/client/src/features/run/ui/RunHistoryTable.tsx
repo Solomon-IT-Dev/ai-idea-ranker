@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 
 import type { RunRow } from '@/entities/run/types/run'
-
 import { RunStatusBadge } from '@/entities/run/ui/RunStatusBadge'
 import { formatDateTime } from '@/shared/lib/date'
 import { Button } from '@/shared/ui/button'

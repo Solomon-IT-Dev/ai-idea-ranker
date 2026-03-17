@@ -21,10 +21,8 @@ export function ProjectIdeasTab() {
       const res = await importMutation.mutateAsync(text)
       const imported = res.insertedCount ?? res.ideas.length
       toast.success(`Imported ${imported} ideas.`)
-    } catch (e) {
+    } catch {
       toast.error('Couldn’t import ideas.')
-
-      console.error(e)
     }
   }
 
