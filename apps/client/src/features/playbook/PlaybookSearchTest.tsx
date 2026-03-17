@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import { usePlaybookSearch } from '@/entities/playbook/api/playbook.queries'
+import { truncateText } from '@/shared/lib/text'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -71,7 +72,7 @@ export function PlaybookSearchTest({ projectId, hasChunks = true }: Props & { ha
                   <span className="text-muted-foreground">{r.score.toFixed(3)}</span>
                 </div>
                 {r.text ? (
-                  <p className="mt-2 text-muted-foreground">{truncate(r.text, 240)}</p>
+                  <p className="mt-2 text-muted-foreground">{truncateText(r.text, 240)}</p>
                 ) : null}
               </div>
             ))}
@@ -80,8 +81,4 @@ export function PlaybookSearchTest({ projectId, hasChunks = true }: Props & { ha
       </div>
     </Card>
   )
-}
-
-function truncate(s: string, n: number) {
-  return s.length > n ? `${s.slice(0, n)}…` : s
 }

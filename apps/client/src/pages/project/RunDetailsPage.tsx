@@ -9,6 +9,8 @@ import {
   useGenerateArtifactsMutation,
 } from '@/entities/artifact/api/artifacts.queries'
 import { runKeys, useRun } from '@/entities/run/api/runs.queries'
+import { getRunStatusLabel } from '@/entities/run/lib/runStatus'
+import { RunStatusBadge } from '@/entities/run/ui/RunStatusBadge'
 import { useRunStream } from '@/features/runStream/model/runStream.hooks'
 import { useToastQueryError } from '@/shared/hooks/useToastQueryError'
 import { Badge } from '@/shared/ui/badge'
@@ -90,8 +92,7 @@ export function RunDetailsPage() {
         )
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream.lastEvent?.type, isGeneratingArtifacts])
+  }, [stream.lastEvent?.type, isGeneratingArtifacts, runQuery, pid, qc])
 
   // Track `plan.progress` events (artifacts streaming)
   useEffect(() => {
@@ -198,9 +199,7 @@ export function RunDetailsPage() {
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <span>Status</span>
-                <Badge variant={statusBadgeVariant(run?.status)}>
-                  {formatRunStatusLabel(run?.status)}
-                </Badge>
+                <RunStatusBadge status={run?.status} />
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2 text-muted-foreground">
                 <span>Live updates</span>
@@ -370,23 +369,6 @@ export function RunDetailsPage() {
   )
 }
 
-function statusBadgeVariant(
-  status: string | undefined
-): 'default' | 'secondary' | 'outline' | 'destructive' {
-  if (status === 'completed') return 'default'
-  if (status === 'running') return 'secondary'
-  if (status === 'failed') return 'destructive'
-  return 'outline'
-}
-
-function formatRunStatusLabel(status: string | undefined) {
-  if (!status) return 'Loading'
-  if (status === 'running') return 'Running'
-  if (status === 'completed') return 'Completed'
-  if (status === 'failed') return 'Failed'
-  return status
-}
-
 function ProgressEventsList({ events }: { events: Array<{ type: string; data: unknown }> }) {
   function format(e: { type: string; data: unknown }): {
     title: string
@@ -407,7 +389,7 @@ function ProgressEventsList({ events }: { events: Array<{ type: string; data: un
     if (e.type === 'run.snapshot') {
       return {
         title: 'Status update',
-        detail: d?.status ? `Status: ${formatRunStatusLabel(String(d.status))}` : undefined,
+        detail: d?.status ? `Status: ${getRunStatusLabel(String(d.status))}` : undefined,
         badge: { text: 'snapshot', variant: 'secondary' },
       }
     }

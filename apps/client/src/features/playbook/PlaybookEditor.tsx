@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 
 import type { GetPlaybookResponse } from '@/entities/playbook/types/playbook'
+
+import { formatDateTime } from '@/shared/lib/date'
 import { getPlaybookEditorMode, setPlaybookEditorMode } from '@/shared/lib/storage'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -76,10 +78,8 @@ export function PlaybookEditor({ projectId, initial, onSave, isPending }: Props)
       await onSave(values)
       toast.success('Playbook uploaded.')
       reset(values)
-    } catch (e) {
+    } catch {
       toast.error('Failed to upload playbook.')
-
-      console.error(e)
     }
   }
 
@@ -124,7 +124,7 @@ export function PlaybookEditor({ projectId, initial, onSave, isPending }: Props)
                   <div>
                     <span className="text-muted-foreground">Updated:</span>{' '}
                     <span className="font-medium">
-                      {formatDate(
+                      {formatDateTime(
                         initial?.playbook?.updated_at ?? initial?.playbook?.created_at ?? ''
                       )}
                     </span>
@@ -237,10 +237,4 @@ export function PlaybookEditor({ projectId, initial, onSave, isPending }: Props)
       </div>
     </Card>
   )
-}
-
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString()
 }
