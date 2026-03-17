@@ -5,6 +5,7 @@ The server applies a small set of baseline protections suitable for an API behin
 ## HTTP Middleware
 
 Configured in `src/app.ts`:
+
 - `helmet` — security headers tuned for API + cross-origin frontend
 - `cors` — permissive in dev; restricted to `CLIENT_ORIGIN` in production (if set)
 - `hpp` — prevents HTTP parameter pollution
@@ -13,8 +14,8 @@ Configured in `src/app.ts`:
 
 ## Proxy / Hosting Notes
 
-The app sets `trust proxy` (see `securityConstants.trustProxy`) to behave correctly behind
-platform proxies (Railway/Vercel/etc).
+The app sets `trust proxy` (see `securityConstants.trustProxy`) to behave correctly behind platform
+proxies (Render/Vercel/etc).
 
 ## Secrets & Logging
 

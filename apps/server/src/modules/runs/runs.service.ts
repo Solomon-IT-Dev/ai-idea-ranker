@@ -401,7 +401,7 @@ export async function getRun(db: SupabaseClient, input: { projectId: string; run
 
   const scores = await selectIdeaScoresByRunId(db, input.runId)
 
-  // Repair/timeout: async runs can be interrupted by server restarts (Railway deploys, crashes).
+  // Repair/timeout: async runs can be interrupted by server restarts (Render deploys, crashes).
   // In that case the DB row may remain "running" forever. Make it self-healing on read.
   if (run.status === 'running') {
     if (scores.length > 0) {

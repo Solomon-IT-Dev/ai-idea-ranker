@@ -16,7 +16,7 @@ export const openapiSpec = {
   servers: [
     {
       url: 'https://appsserver-production-d740.up.railway.app',
-      description: 'Production server (Railway)',
+      description: 'Production server (Render)',
     },
     {
       url: 'http://localhost:8080',

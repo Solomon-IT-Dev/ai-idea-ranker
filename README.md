@@ -47,8 +47,8 @@ At a glance:
 ## Live Demo
 
 - Client (Vercel): `https://ai-idea-ranker.vercel.app/`
-- Server (Railway): `https://appsserver-production-d740.up.railway.app` (`/health`)
-- Server Swagger UI: `https://appsserver-production-d740.up.railway.app/docs`
+- Server: set by your active Render service URL (`/health`)
+- Server Swagger UI: `<your-render-url>/docs`
 
 ## Quick Start (Local)
 
@@ -91,7 +91,7 @@ pnpm dev:client
 
 ## Deployment
 
-See `docs/DEPLOYMENT.md` for Railway (server) + Vercel (client) setup, required environment
+See `docs/DEPLOYMENT.md` for Render (server) + Vercel (client) setup, required environment
 variables, and post-deploy checks.
 
 ## API Documentation
